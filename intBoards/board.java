@@ -1,4 +1,4 @@
- class board {
+class board {
     
     // Each of 32 squares is 3 bits: ( king? | player? | occupied? )
     // 0    Empty
@@ -9,14 +9,14 @@
     //
     //  Transformation of game board from
     //
-    //      0       1       2       3
-    //  4       5       6       7
-    //      8       9       10      11
-    //  12      13      14      15
-    //      16      17      18      19
-    //  20      21      22      23
-    //      24      25      26      27
-    //  28      29      30      31
+    //      28      29      30      31
+    //  24      25      26      27
+    //      20      21      22      23
+    //  16      17      18      19      
+    //      12      13      14      15
+    //  8       9       10      11
+    //      4       5       6       7
+    //  0       1       2       3
     //
     //  To:
     //
@@ -51,18 +51,16 @@
     private int[] boardState;
     private final static int maxValidMoves = 1000;  // Overestimating. Each piece would have on avg 41.667 valid moves
     private final static int maxJumps = 9;          // Looked up online
-    private int[][] validMovesP0;
-    private int[][] validMovesP1;
-    private int numValidMovesP0 = 0;
-    private int numValidMovesP1 = 0;
+    private int[][][] validMoves;
+    private int[] numValidMoves = {0 , 0};
   
     // Zero parameter constructor creates a "new game" board
     public board() {
         // Int Array
         // 7190235 => Not King, Player 1, Occupied all 4 cols, 2 rows
         boardState = { 7190235, 1755 , 2396160, 2396745 };
-        validMovesP0 = new int[maxValidMoves][maxJumps+2];
-        validMovesP1 = new int[maxValidMoves][maxJumps+2];
+        validMovesP0 = new int[2][maxValidMoves][maxJumps+2];
+        validMovesP1 = new int[2][maxValidMoves][maxJumps+2];
         
         // Char Array
         // 1755 => Not King, Player 1, Occupied all 4 columns
@@ -73,56 +71,93 @@
     // inputBoard must be checked by caller
     public board(int[] inputBoard) {
         boardState = inputBoard;
-        validMovesP0 = new int[maxValidMoves][maxJumps+2];
-        validMovesP1 = new int[maxValidMoves][maxJumps+2];
+        validMovesP0 = new int[2][maxValidMoves][maxJumps+2];
+        validMovesP1 = new int[2][maxValidMoves][maxJumps+2];
     }
     
     // Return 3 bit value at specified square
     private int getSquareVal( int squareNum ) {
-        return (boardState[squareNum/4]&(7 << (squareNum&7)*3)) >> (squareNum&7)*3;
+        return squareNum == -1 ? -1 : (boardState[squareNum/8]&(7 << (squareNum&7)*3)) >> (squareNum&7)*3;
     }
 
     // If the desired square DNE, return -1
-    // Direction of desired square based on the function (Up, UpAdj, Down, DownAdj)
+    // Directions: Up = 0, Up2 = 1, Down = 2, Down2 = 3
 
-    // getSquareUp/Down are simple getSquare same column, row above/below.
-    private int getSquareDown( int squareNum ) {
-        return (squareNum>3) ? squareNum-4 : -1;
-    }
+    private int getSquareDir( int squareNum, int dir ) {
+        if( dir == 0 )
+            return (squareNum < 28) ? squareNum+4 : -1;
+        if( dir == 1 ) {
+            if( ((squareNum/4)&1) == 1 )    // Odd
+                return (squareNum > 27 || ((squareNum&3) == 3)) ? -1 : squareNum+5;
+            return ((squareNum&3) == 0) ? -1 : squareNum+3; // Even
+        }
+        if( dir == 2 )
+            return (squareNum>3) ? squareNum-4 : -1;
+        
+        if( ((squareNum/4)&1) == 0 )    // Even
+            return (squareNum < 4 || ((squareNum&3) == 0)) ? -1 : squareNum-5;
+        return ((squareNum&3)==0) ? -1 : squareNum-3;   // Odd
+    }   
     
-    private int getSquareUp( int squareNum ) {
-        return (squareNum < 28) ? squareNum+4 : -1;
-    }
 
-
-    // getSquareAdj are more tricky since they must also check if the column exists too.
-    // The column to look at changes based on row even vs odd
-    private int getSquareDownAdj( int squareNum ) {
-        if( ((squareNum/4)&1) == 0 )    // Even row, look right 1 column
-            return (((squareNum&3) == 3) || (squareNum < 4)) ? -1 : squareNum-3;
-        return ((squareNum&3)==0) ? -1 : squareNum-5;   // Odd row, look left 1 column
-    }
-
-    private int getSquareUpAdj( int squareNum ) {
-        if( ((squareNum/4)&1) == 1 )    // Odd row, look left 1 column
-            return (((squareNum&3) == 0) || squareNum>27) ? -1 : squareNum+3;
-        return ((squareNum&3) == 3) ? -1 : squareNum-3;
-    }
-
-    public void updateValidMovesP0() {
-        int currSqVal;
+    public void updateValidMoves(int player) {
+        int sqVal;
         for( int sq = 0; sq < 32; sq++ ) {
-            currSqVal = getSquare(sq);
-            if( (currSqVal&3) == 1 ) {      // If occupied and Player0's piece
-                if( currSqVal == 7 ) {      // If king
-                }
-                else {                      // Not a king
-                    if( getSquareVal(getSquareDown(sq)) == 0 ) {    //Empty
-                        validMovesP0[numValidMovesP0][0] = sq;
-                        validMovesP0[numValidMovesP0][1] = getSquareDown(sq);
-                        numValidMovesP0++;
-                    }
-                    else if( getSquareVal(getSquareDown(sq)) > 2) {     //Player1's piece
+            sqVal = getSquareVal(sq);
+            if( sqVal > 0 && (sqVal&1) == player )
+                recursiveMoveFinder( sq, sq, 0, player, (sqVal > 2 ? true : false))
+        }
+    }
 
-                    if( (getSquareVal(getSquareDownAdj(sq))&1)
-                    getSquareDownAdj(sq);
+    private void recursiveMoveFinder( int startSq, int currentSq, int numJumpsSoFar , int player , boolean king ) {
+        int tmpSq, startDir, stopDir, currentSqVal, endSqVal, jumpedSqVal;
+        if( king ) {
+            startDir = 0;
+            stopDir = 4;
+        }
+        else if( player == 0) {
+            startDir = 0;
+            stopDir = 2;
+        }
+        else {
+            startDir = 2;
+            stopDir = 4;
+        }
+        for( int dir = 0; dir < 2; dir++ ) {
+            tmpSq = getSquareDir(currentSq,dir);
+            if( getSquareVal(tmpSq) == 0 && startSq == currentSq) {
+                validMoves[player][numValidMoves[player]][0] = startSq;
+                validMoves[player][numValidMoves[player]][1] = tmpSq;
+                numValidMoves[player]++;
+            }
+            else if( (getSquareVal(tmpSq)%2) == (player == 0 ? 1 : 0) && getSquareVal(getSquareDir(tmpSq,dir)) == 0) {
+                validMoves[player][numValidMoves[player]][0] = startSq;
+                validMoves[player][numValidMoves[player]][1] = getSquareDir(tmpSq,dir);
+                for(int ii = numJumpsSoFar; ii > 0; ii--)
+                    validMoves[player][numValidMoves[player]][2+ii] = validMoves[player][numValidMoves[player]-1][2+ii];
+                validMoves[player][numValidMoves[player]][2+numJumpsSoFar] = tmpSq;
+                numValidMoves[player]++;
+
+                currentSqVal = getSquareVal(currentSq);
+                endSqVal = getSquareVal(getSquareDir(tmpSq,dir));
+                jumpedSqVal = getSquareVal(tmpSq);
+
+                applySingleJump( currentSq, currentSqVal, getSquareDir(tmpSq,dir), endSqVal, tmpSq, jumpedSqVal);
+                
+                recursiveMoveFinder( startSq, getSquareDir(tmpSq,dir), numJumpsSoFar+1 , player , king );
+                
+                removeSingleJump( currentSq, currentSqVal, getSquareDir(tmpSq,dir), endSqVal, tmpSq, jumpedSqVal);
+            }
+        }
+    }
+
+    private void applySingleJump( int startSq, int startSqVal, int endSq, int endSqVal, int jumpedSq, int jumpedSqVal ) {
+        boardState[startSq/8] -= startSqVal << (startSq&7)*3;
+        boardState[endSq/8] += endSqVal << (endSq&7)*3;
+        boardState[jumpedSq/8] -= jumpedSqVal << (jumpedSq&7)*3;
+    }
+    private void removeSingleJump( int startSq, int endSq, int jumpedSq, int startSqVal, int endSqVal, int jumpedSqVal ) {
+        boardState[startSq/8] += startSqVal << (startSq&7)*3;
+        boardState[endSq/8] -= endSqVal << (endSq&7)*3;
+        boardState[jumpedSq/8] += jumpedSqVal << (jumpedSq&7)*3;
+    }
