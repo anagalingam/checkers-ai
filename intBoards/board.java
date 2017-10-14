@@ -1,12 +1,11 @@
  class board {
     
     // Each of 32 squares is 3 bits: ( king? | player? | occupied? )
-    // xx0  =>  empty square
-    // xx1  =>  occupied square
-    // x0x  =>  player 0's piece
-    // x1x  =>  player 1's piece
-    // 0xx  =>  NOT a king
-    // 1xx  =>  king
+    // 0    Empty
+    // 1    P1's Normal Piece
+    // 2    P0's Normal Piece
+    // 3    P1's King
+    // 4    P0's King
     //
     //  Transformation of game board from
     //
@@ -21,31 +20,32 @@
     //
     //  To:
     //
-    //  UP SIDE = P0
-    //
-    //  0   1   2   3   \
-    //                    = boardState[0]
-    //  4   5   6   7   /
+    //  UP SIDE = P1
     //  
-    //  8   9   10  11  \
-    //                    = boardState[1]
-    //  12  13  14  15  /
-    //  
-    //  16  17  18  19  \
-    //                    = boardState[2]
-    //  20  21  22  23  /
-    //  
-    //  24  25  26  27  \
+    //  28  29  30  31  \
     //                    = boardState[3]
-    //  28  29  30  31  /
+    //  24  25  26  27  /
     //
-    //  DOWN SIDE = P1
-    //  Each int represents 2 rows, bits 0-2 for upleft             (ex. 0)
-    //                              bits 3-5 for upleft + right 1   (ex. 1)
-    //                              bits 21-23 for downright        (ex. 7)
+    //  20  21  22  23  \
+    //                    = boardState[2]
+    //  16  17  18  19  /
+    //
+    //  12  13  14  15  \
+    //                    = boardState[1]
+    //  8   9   10  11  /
+    //  
+    //  4   5   6   7   \
+    //                    = boardState[0]
+    //  0   1   2   3   /
+    //
+    //  DOWN SIDE = P0
+    //
+    //  Each int represents 2 rows, bits 0-2 for downleft           (ex. 0)
+    //                              bits 3-5 for downleft + right 1 (ex. 1)
+    //                              bits 21-23 for upright          (ex. 7)
     //
     //  Each valid move is expressed as an array of length maxJumps+2.
-    //  [ startPos , endPos , jump0 , jump1, ... , jumpmaxJumps ]
+    //  [ startPos , endPos , jump0 , jump1, ... , jump_maxJumps-1 ]
     //  A matrix of all valid moves for each player in the given boardState is stored
 
     private int[] boardState;
@@ -82,63 +82,34 @@
         return (boardState[squareNum/4]&(7 << (squareNum&7)*3)) >> (squareNum&7)*3;
     }
 
-    // All getSquare func return 3 bit value at square relative to given square
     // If the desired square DNE, return -1
     // Direction of desired square based on the function (Up, UpAdj, Down, DownAdj)
 
     // getSquareUp/Down are simple getSquare same column, row above/below.
-    private int getSquareUp( int squareNum ) {
+    private int getSquareDown( int squareNum ) {
         return (squareNum>3) ? squareNum-4 : -1;
     }
-        //if( ((squareNum/4)&1) == 0 ) {    // Even row
-        //    if(squareNum/4 == 0 )
-        //        return -1;
-            //return (boardState[squareNum/4-1]&(7 << ((squareNum&3)+4)*3)) >> ((squareNum&3)+4)*3;
-        //}
-        // Odd row
-        //return (boardState[squareNum/4]&(7 << (squareNum&3)*3)) >> (squareNum&3)*3;
     
-    private int getSquareDown( int squareNum ) {
-        if( ((squareNum/4)&1) == 1 ) {   // Odd row
-            if(squareNum/4 == 7 )
-                return -1;
-            return (boardState[squareNum/4+1]&(7 << (squareNum&3)*3)) >> (squareNum&3)*3;
-        }
-        // Even row
-        return (boardState[squareNum/4]&(7 << ((squareNum&3)+4)*3)) >> ((squareNum&3)+4)*3;
+    private int getSquareUp( int squareNum ) {
+        return (squareNum < 28) ? squareNum+4 : -1;
     }
 
 
     // getSquareAdj are more tricky since they must also check if the column exists too.
     // The column to look at changes based on row even vs odd
-    private int getSquareUpAdj( int squareNum ) {
-        if( ((squareNum/4)&1) == 0 ) {    // Even row, look right 1 column
-            if( (squareNum&3) == 3 )      // Right most column
-                return -1;
-            if( squareNum/4 == 0 )
-                return -1;
-            return (boardState[squareNum/4-1]&(7 << ((squareNum&3)+5)*3)) >> ((squareNum&3)+5)*3;
-        }
-        // Odd row, look left 1 column
-        if( (squareNum&3) == 0 )          // Left most column
-            return -1;
-        return (boardState[squareNum/4]&(7 << ((squareNum&3)-1)*3)) >> ((squareNum&3)-1)*3;
-    }
-
     private int getSquareDownAdj( int squareNum ) {
-        if( ((squareNum/4)&1) == 1 ) {    // Odd row, look left 1 column
-            if( (squareNum&3) == 0 )
-                return -1;
-            if( squareNum/4 == 7 )
-                return -1;
-            return (boardState[squareNum/4+1]&(7 << ((squareNum&3)-1)*3)) >> ((squareNum&3)-1)*3;
-        }
-        if( (squareNum&3) == 3)
-            return -1;
-        return (boardState[squareNum/4]&(7 << ((squareNum&3)+5)*3)) >> ((squareNum&3)+5)*3;
+        if( ((squareNum/4)&1) == 0 )    // Even row, look right 1 column
+            return (((squareNum&3) == 3) || (squareNum < 4)) ? -1 : squareNum-3;
+        return ((squareNum&3)==0) ? -1 : squareNum-5;   // Odd row, look left 1 column
     }
 
-    public int[][] getValidMovesP0() {
+    private int getSquareUpAdj( int squareNum ) {
+        if( ((squareNum/4)&1) == 1 )    // Odd row, look left 1 column
+            return (((squareNum&3) == 0) || squareNum>27) ? -1 : squareNum+3;
+        return ((squareNum&3) == 3) ? -1 : squareNum-3;
+    }
+
+    public void updateValidMovesP0() {
         int currSqVal;
         for( int sq = 0; sq < 32; sq++ ) {
             currSqVal = getSquare(sq);
@@ -146,13 +117,12 @@
                 if( currSqVal == 7 ) {      // If king
                 }
                 else {                      // Not a king
-                    if( (getSquareDown(sq)&1) == 0 ) {    //Empty
+                    if( getSquareVal(getSquareDown(sq)) == 0 ) {    //Empty
                         validMovesP0[numValidMovesP0][0] = sq;
-                        validMovesP0[numValidMovesP0][1] = 
+                        validMovesP0[numValidMovesP0][1] = getSquareDown(sq);
+                        numValidMovesP0++;
+                    }
+                    else if( getSquareVal(getSquareDown(sq)) > 2) {     //Player1's piece
+
+                    if( (getSquareVal(getSquareDownAdj(sq))&1)
                     getSquareDownAdj(sq);
-
-
-
-
-
-
