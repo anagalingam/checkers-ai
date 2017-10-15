@@ -1,3 +1,4 @@
+import java.util.Scanner;
 class board {
     
     // Each of 32 squares is at maximum a 3 bit value:
@@ -52,15 +53,13 @@ class board {
     private final static int maxValidMoves = 1000;  // Overestimating. Each piece would have on avg 41.667 valid moves
     private final static int maxJumps = 9;          // Looked up online
     private int[][][] validMoves;
-    private int[] numValidMoves = {0 , 0};
+    public int[] numValidMoves = {0 , 0};
   
     // Zero parameter constructor creates a "new game" board
     public board() {
         // Int Array
-        // 7190235 => Not King, Player 1, Occupied all 4 cols, 2 rows
-        boardState = { 4793490, 1170 , 2396160, 2396745 };
-        validMovesP0 = new int[2][maxValidMoves][maxJumps+2];
-        validMovesP1 = new int[2][maxValidMoves][maxJumps+2];
+        boardState = new int[]{ 4793490, 1170 , 2396160, 2396745 };
+        validMoves = new int[2][maxValidMoves][maxJumps+2];
         
         // Char Array
         // 1755 => Not King, Player 1, Occupied all 4 columns
@@ -71,8 +70,22 @@ class board {
     // inputBoard must be checked by caller
     public board(int[] inputBoard) {
         boardState = inputBoard;
-        validMovesP0 = new int[2][maxValidMoves][maxJumps+2];
-        validMovesP1 = new int[2][maxValidMoves][maxJumps+2];
+        validMoves = new int[2][maxValidMoves][maxJumps+2];
+    }
+
+    public void printBoard() {
+        for( int row = 7; row >= 0; row-- ) {
+            for( int col = 0; col < 8; col++ ) {
+                if( row%2 == col%2 ) {
+                    System.out.print(getSquareVal(row*4+col/2));
+                    System.out.print('\t');
+                }
+                else
+                    System.out.print('\t');
+                if( col == 7 )
+                    System.out.println('\n');
+            }
+        }
     }
     
     // Return 3 bit value at specified square
@@ -101,13 +114,40 @@ class board {
     
 
     public void updateValidMoves(int player) {
+        while( numValidMoves[player] > 0 ) {
+            for(int ii = 0; ii < maxJumps+2; ii++ ) 
+                validMoves[player][numValidMoves[player]][ii] = 0;
+            numValidMoves[player]--;
+        }
         int sqVal;
         for( int sq = 0; sq < 32; sq++ ) {
             sqVal = getSquareVal(sq);
             if( sqVal > 0 && (sqVal&1) == player )
-                recursiveMoveFinder( sq, sq, 0, player, (sqVal > 2 ? true : false))
+                recursiveMoveFinder( sq, sq, 0, player, (sqVal > 2 ? true : false));
         }
     }
+
+    public void printValidMoves(int player) {
+        System.out.println("Printing " + numValidMoves[player] + " valid moves for player " + player);
+        for( int ii = 0; ii < numValidMoves[player]; ii++) {
+            for( int jj = 0; jj < maxJumps+2; jj++) {
+                if(jj == 0)
+                    System.out.print("Move #" + ii + "\t Start: ");
+                if(jj == 1)
+                    System.out.print("End: ");
+                if(jj == 2 && validMoves[player][ii][2] != 0)
+                    System.out.print("Jumped: ");
+                if(validMoves[player][ii][jj] == 0)
+                    break;
+                System.out.print(validMoves[player][ii][jj]);
+                System.out.print('\t');
+            }
+            System.out.println(' ');
+        }
+    }
+
+    private static int otherDir(int dir) {
+        if( dir == 0 )
 
     private void recursiveMoveFinder( int startSq, int currentSq, int numJumpsSoFar , int player , boolean king ) {
         int tmpSq, startDir, stopDir, currentSqVal, endSqVal, jumpedSqVal;
@@ -123,7 +163,7 @@ class board {
             startDir = 2;
             stopDir = 4;
         }
-        for( int dir = 0; dir < 2; dir++ ) {
+        for( int dir = startDir; dir < stopDir; dir++ ) {
             tmpSq = getSquareDir(currentSq,dir);
             if( getSquareVal(tmpSq) == 0 && startSq == currentSq) {
                 validMoves[player][numValidMoves[player]][0] = startSq;
@@ -139,27 +179,65 @@ class board {
                 numValidMoves[player]++;
 
                 currentSqVal = getSquareVal(currentSq);
-                endSqVal = getSquareVal(getSquareDir(tmpSq,dir));
                 jumpedSqVal = getSquareVal(tmpSq);
 
-                applySingleJump( currentSq, currentSqVal, getSquareDir(tmpSq,dir), endSqVal, tmpSq, jumpedSqVal);
+                applySingleJump( currentSq, getSquareDir(tmpSq,dir), tmpSq, currentSqVal, jumpedSqVal);
                 
                 recursiveMoveFinder( startSq, getSquareDir(tmpSq,dir), numJumpsSoFar+1 , player , king );
                 
-                removeSingleJump( currentSq, currentSqVal, getSquareDir(tmpSq,dir), endSqVal, tmpSq, jumpedSqVal);
+                removeSingleJump( currentSq, getSquareDir(tmpSq,dir), tmpSq, currentSqVal, jumpedSqVal);
             }
         }
     }
 
-    private void applySingleJump( int startSq, int startSqVal, int endSq, int endSqVal, int jumpedSq, int jumpedSqVal ) {
+    private void applySingleJump( int startSq, int endSq, int jumpedSq, int startSqVal, int jumpedSqVal ) {
         boardState[startSq/8] -= startSqVal << (startSq&7)*3;
-        boardState[endSq/8] += endSqVal << (endSq&7)*3;
+        boardState[endSq/8] += startSqVal << (endSq&7)*3;
         boardState[jumpedSq/8] -= jumpedSqVal << (jumpedSq&7)*3;
     }
-    private void removeSingleJump( int startSq, int endSq, int jumpedSq, int startSqVal, int endSqVal, int jumpedSqVal ) {
+    private void removeSingleJump( int startSq, int endSq, int jumpedSq, int startSqVal, int jumpedSqVal ) {
         boardState[startSq/8] += startSqVal << (startSq&7)*3;
-        boardState[endSq/8] -= endSqVal << (endSq&7)*3;
+        boardState[endSq/8] -= startSqVal << (endSq&7)*3;
         boardState[jumpedSq/8] += jumpedSqVal << (jumpedSq&7)*3;
     }
 
-    
+    public void applySingleMove( int player, int moveNumber ) {
+        int[] move = validMoves[player][moveNumber];
+        System.out.print("Applying move ");
+        printArray(move);
+        int startSqVal = getSquareVal(move[0]);
+        for( int ii = 0; ii < maxJumps+2; ii++ ) {
+            if( ii == 0 )
+                boardState[move[ii]/8] -= startSqVal << (move[ii]&7)*3;
+            else if( ii == 1 )
+                boardState[move[ii]/8] += startSqVal << (move[ii]&7)*3;
+            else if( move[ii] == 0 )
+                break;
+            else
+                boardState[move[ii]/8] -= getSquareVal(move[ii]) << (move[ii]&7)*3;
+        }
+    }
+
+    public static void printArray(int[] arr) {
+        System.out.print("[ ");
+        for( int ii = 0; ii < arr.length; ii++ ) {
+            System.out.print( arr[ii] + " " );
+        }
+        System.out.println("]");
+    }
+
+
+    public static void main( String[] args ) {
+        board game1 = new board();
+        int turn = 0;
+        Scanner sc = new Scanner(System.in);
+        while(true) {
+            game1.printBoard();
+            game1.updateValidMoves(turn%2);
+            game1.printValidMoves(turn%2);
+            System.out.println("Enter a move number from 0 - " + game1.numValidMoves[turn%2]);
+            game1.applySingleMove(turn%2,sc.nextInt());
+            turn++;
+        }
+    }
+}
