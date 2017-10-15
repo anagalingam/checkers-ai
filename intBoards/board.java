@@ -1,6 +1,6 @@
 class board {
     
-    // Each of 32 squares is 3 bits: ( king? | player? | occupied? )
+    // Each of 32 squares is at maximum a 3 bit value:
     // 0    Empty
     // 1    P1's Normal Piece
     // 2    P0's Normal Piece
@@ -58,7 +58,7 @@ class board {
     public board() {
         // Int Array
         // 7190235 => Not King, Player 1, Occupied all 4 cols, 2 rows
-        boardState = { 7190235, 1755 , 2396160, 2396745 };
+        boardState = { 4793490, 1170 , 2396160, 2396745 };
         validMovesP0 = new int[2][maxValidMoves][maxJumps+2];
         validMovesP1 = new int[2][maxValidMoves][maxJumps+2];
         
@@ -161,3 +161,5 @@ class board {
         boardState[endSq/8] -= endSqVal << (endSq&7)*3;
         boardState[jumpedSq/8] += jumpedSqVal << (jumpedSq&7)*3;
     }
+
+    
