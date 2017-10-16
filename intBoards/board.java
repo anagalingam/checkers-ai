@@ -54,17 +54,13 @@ class board {
     private final static int maxJumps = 9;          // Looked up online
     private int[][][] validMoves;
     public int[] numValidMoves = {0 , 0};
+    private boolean mustJump = false;
   
     // Zero parameter constructor creates a "new game" board
     public board() {
         // Int Array
         boardState = new int[]{ 4793490, 1170 , 2396160, 2396745 };
         validMoves = new int[2][maxValidMoves][maxJumps+2];
-        
-        // Char Array
-        // 1755 => Not King, Player 1, Occupied all 4 columns
-        // 585  => Not King, Player 0, Occupied all 4 columns
-        //boardState = {1755, 1755, 1755, 0, 0, 585, 585, 585};
     }
     
     // inputBoard must be checked by caller
@@ -114,6 +110,7 @@ class board {
     
 
     public void updateValidMoves(int player) {
+        mustJump = false;
         while( numValidMoves[player] > 0 ) {
             for(int ii = 0; ii < maxJumps+2; ii++ ) 
                 validMoves[player][numValidMoves[player]][ii] = 0;
@@ -125,29 +122,33 @@ class board {
             if( sqVal > 0 && (sqVal&1) == player )
                 recursiveMoveFinder( sq, sq, 0, player, (sqVal > 2 ? true : false));
         }
+
     }
 
     public void printValidMoves(int player) {
         System.out.println("Printing " + numValidMoves[player] + " valid moves for player " + player);
+        // Add in deletion of no jump moves if(mustJump)
         for( int ii = 0; ii < numValidMoves[player]; ii++) {
             for( int jj = 0; jj < maxJumps+2; jj++) {
-                if(jj == 0)
-                    System.out.print("Move #" + ii + "\t Start: ");
-                if(jj == 1)
+                if(jj == 0) {
+                    System.out.print("Move #" + ii + "\t \t Start: ");
+                    System.out.print(validMoves[player][ii][jj]);
+                }
+                else if(jj == 1) {
                     System.out.print("End: ");
-                if(jj == 2 && validMoves[player][ii][2] != 0)
+                    System.out.print(validMoves[player][ii][jj]);
+                }
+                else if(jj == 2 && validMoves[player][ii][2] != 0) {
                     System.out.print("Jumped: ");
-                if(validMoves[player][ii][jj] == 0)
+                    System.out.print(validMoves[player][ii][jj]);
+                }
+                else if (validMoves[player][ii][jj] == 0)
                     break;
-                System.out.print(validMoves[player][ii][jj]);
                 System.out.print('\t');
             }
             System.out.println(' ');
         }
     }
-
-    private static int otherDir(int dir) {
-        if( dir == 0 )
 
     private void recursiveMoveFinder( int startSq, int currentSq, int numJumpsSoFar , int player , boolean king ) {
         int tmpSq, startDir, stopDir, currentSqVal, endSqVal, jumpedSqVal;
@@ -165,15 +166,18 @@ class board {
         }
         for( int dir = startDir; dir < stopDir; dir++ ) {
             tmpSq = getSquareDir(currentSq,dir);
-            if( getSquareVal(tmpSq) == 0 && startSq == currentSq) {
+            if( getSquareVal(tmpSq) == 0 ) {
+                if(!mustJump) {
                 validMoves[player][numValidMoves[player]][0] = startSq;
                 validMoves[player][numValidMoves[player]][1] = tmpSq;
                 numValidMoves[player]++;
+                }
             }
-            else if( (getSquareVal(tmpSq)%2) == (player == 0 ? 1 : 0) && getSquareVal(getSquareDir(tmpSq,dir)) == 0) {
+            else if( getSquareVal(tmpSq) != 0 && (getSquareVal(tmpSq)%2) == (player == 0 ? 1 : 0) && getSquareVal(getSquareDir(tmpSq,dir^1)) == 0) {
+                mustJump = true;
                 validMoves[player][numValidMoves[player]][0] = startSq;
-                validMoves[player][numValidMoves[player]][1] = getSquareDir(tmpSq,dir);
-                for(int ii = numJumpsSoFar; ii > 0; ii--)
+                validMoves[player][numValidMoves[player]][1] = getSquareDir(tmpSq,dir^1);
+                for(int ii = 0; ii < numJumpsSoFar; ii++)
                     validMoves[player][numValidMoves[player]][2+ii] = validMoves[player][numValidMoves[player]-1][2+ii];
                 validMoves[player][numValidMoves[player]][2+numJumpsSoFar] = tmpSq;
                 numValidMoves[player]++;
@@ -181,11 +185,11 @@ class board {
                 currentSqVal = getSquareVal(currentSq);
                 jumpedSqVal = getSquareVal(tmpSq);
 
-                applySingleJump( currentSq, getSquareDir(tmpSq,dir), tmpSq, currentSqVal, jumpedSqVal);
+                applySingleJump( currentSq, getSquareDir(tmpSq,dir^1), tmpSq, currentSqVal, jumpedSqVal);
                 
-                recursiveMoveFinder( startSq, getSquareDir(tmpSq,dir), numJumpsSoFar+1 , player , king );
+                recursiveMoveFinder( startSq, getSquareDir(tmpSq,dir^1), numJumpsSoFar+1 , player , king );
                 
-                removeSingleJump( currentSq, getSquareDir(tmpSq,dir), tmpSq, currentSqVal, jumpedSqVal);
+                removeSingleJump( currentSq, getSquareDir(tmpSq,dir^1), tmpSq, currentSqVal, jumpedSqVal);
             }
         }
     }
@@ -216,6 +220,7 @@ class board {
             else
                 boardState[move[ii]/8] -= getSquareVal(move[ii]) << (move[ii]&7)*3;
         }
+// Add in promotion to king here
     }
 
     public static void printArray(int[] arr) {
