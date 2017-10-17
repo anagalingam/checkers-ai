@@ -55,6 +55,7 @@ class board {
     private int[][][] validMoves;
     public int[] numValidMoves = {0 , 0};
     private boolean mustJump = false;
+    private int firstValidMove = 0;
   
     // Zero parameter constructor creates a "new game" board
     public board() {
@@ -105,15 +106,16 @@ class board {
         
         if( ((squareNum/4)&1) == 0 )    // Even
             return (squareNum < 4 || ((squareNum&3) == 0)) ? -1 : squareNum-5;
-        return ((squareNum&3)==0) ? -1 : squareNum-3;   // Odd
+        return ((squareNum&3)==3) ? -1 : squareNum-3;   // Odd
     }   
     
 
-    public void updateValidMoves(int player) {
+    public boolean updateValidMoves(int player) {
         mustJump = false;
+        firstValidMove = 0;
         while( numValidMoves[player] > 0 ) {
             for(int ii = 0; ii < maxJumps+2; ii++ ) 
-                validMoves[player][numValidMoves[player]][ii] = 0;
+                validMoves[player][numValidMoves[player]-1][ii] = 0;
             numValidMoves[player]--;
         }
         int sqVal;
@@ -122,16 +124,18 @@ class board {
             if( sqVal > 0 && (sqVal&1) == player )
                 recursiveMoveFinder( sq, sq, 0, player, (sqVal > 2 ? true : false));
         }
-
+        return numValidMoves[player]>0 ? true : false;
     }
 
     public void printValidMoves(int player) {
-        System.out.println("Printing " + numValidMoves[player] + " valid moves for player " + player);
-        // Add in deletion of no jump moves if(mustJump)
-        for( int ii = 0; ii < numValidMoves[player]; ii++) {
+        if(mustJump)
+            while(validMoves[player][firstValidMove][2] == 0)
+                firstValidMove++;
+        System.out.println("Printing " + Integer.toString(numValidMoves[player]-firstValidMove) + " valid moves for player " + player);
+        for( int ii = firstValidMove; ii < numValidMoves[player]; ii++) {
             for( int jj = 0; jj < maxJumps+2; jj++) {
                 if(jj == 0) {
-                    System.out.print("Move #" + ii + "\t \t Start: ");
+                    System.out.print("Move #" + Integer.toString(ii-firstValidMove+1) + "\t \t Start: ");
                     System.out.print(validMoves[player][ii][jj]);
                 }
                 else if(jj == 1) {
@@ -205,22 +209,57 @@ class board {
         boardState[jumpedSq/8] += jumpedSqVal << (jumpedSq&7)*3;
     }
 
+    private boolean kingMe( int player , int endSq ) {
+        if( player == 0 )
+            return (endSq/4 == 7) ? true : false;
+        return (endSq/4 == 0) ? true: false;
+    }
+
     public void applySingleMove( int player, int moveNumber ) {
-        int[] move = validMoves[player][moveNumber];
+        int[] move = validMoves[player][moveNumber+firstValidMove];
         System.out.print("Applying move ");
         printArray(move);
         int startSqVal = getSquareVal(move[0]);
+        int endSqVal = kingMe(player,move[1]) && startSqVal<3 ? startSqVal+2 : startSqVal;
         for( int ii = 0; ii < maxJumps+2; ii++ ) {
             if( ii == 0 )
                 boardState[move[ii]/8] -= startSqVal << (move[ii]&7)*3;
             else if( ii == 1 )
-                boardState[move[ii]/8] += startSqVal << (move[ii]&7)*3;
+                boardState[move[ii]/8] += endSqVal << (move[ii]&7)*3;
             else if( move[ii] == 0 )
                 break;
             else
                 boardState[move[ii]/8] -= getSquareVal(move[ii]) << (move[ii]&7)*3;
         }
 // Add in promotion to king here
+    }
+
+    public boolean play(int turn, Scanner sc) {
+        int inputMove = 0;
+        boolean firstTry = true;
+        printBoard();
+        if(!updateValidMoves(turn%2)) {
+            System.out.println("Player " + Integer.toString(turn%2) + " has no more moves. Player " + Integer.toString((turn+1)%2) + " WINS!");
+            return false;
+        }
+        printValidMoves(turn%2);
+        while( inputMove<1 || inputMove>numValidMoves[turn%2]-firstValidMove) {
+            try{
+                if(firstTry) {
+                    System.out.println("Enter a move number from 1 - " + Integer.toString(numValidMoves[turn%2]-firstValidMove));
+                    firstTry = false;
+                }
+                else {
+                    System.out.println("Invalid move. Enter a move number from 1 - " + Integer.toString(numValidMoves[turn%2]-firstValidMove));
+                }
+                inputMove = Integer.parseInt(sc.nextLine());
+            }
+            catch (Exception exp) {
+                inputMove = 0;
+            }
+        }
+        applySingleMove(turn%2, inputMove-1);
+        return true;
     }
 
     public static void printArray(int[] arr) {
@@ -236,13 +275,7 @@ class board {
         board game1 = new board();
         int turn = 0;
         Scanner sc = new Scanner(System.in);
-        while(true) {
-            game1.printBoard();
-            game1.updateValidMoves(turn%2);
-            game1.printValidMoves(turn%2);
-            System.out.println("Enter a move number from 0 - " + game1.numValidMoves[turn%2]);
-            game1.applySingleMove(turn%2,sc.nextInt());
+        while(game1.play(turn,sc))
             turn++;
-        }
     }
 }
