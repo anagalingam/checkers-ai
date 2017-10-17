@@ -148,6 +148,8 @@ class board {
                 }
                 else if (validMoves[player][ii][jj] == 0)
                     break;
+                else 
+                    System.out.print(validMoves[player][ii][jj]);
                 System.out.print('\t');
             }
             System.out.println(' ');
@@ -269,13 +271,5 @@ class board {
         }
         System.out.println("]");
     }
-
-
-    public static void main( String[] args ) {
-        board game1 = new board();
-        int turn = 0;
-        Scanner sc = new Scanner(System.in);
-        while(game1.play(turn,sc))
-            turn++;
-    }
 }
+
