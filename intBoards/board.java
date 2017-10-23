@@ -56,6 +56,12 @@ class board {
     public int[] numValidMoves = {0 , 0};
     private boolean mustJump = false;
     private int firstValidMove = 0;
+
+    public static final int posINF = Integer.MAX_VALUE;
+    public static final int negINF = Integer.MIN_VALUE;
+    public static final String ANSI_RESET = "\u001B[0m";
+    public static final String ANSI_RED_BACKGROUND = "\u001B[41m";
+    public static final String ANSI_BLUE = "\u001B[34m";
   
     // Zero parameter constructor creates a "new game" board
     public board() {
@@ -71,18 +77,39 @@ class board {
     }
 
     public void printBoard() {
+        int currVal;
         for( int row = 7; row >= 0; row-- ) {
-            for( int col = 0; col < 8; col++ ) {
-                if( row%2 == col%2 ) {
-                    System.out.print(getSquareVal(row*4+col/2));
-                    System.out.print('\t');
-                }
+            for( int reps = 0; reps < 3; reps++) {
+                if( reps == 1 )
+                    System.out.print(Integer.toString(row+1)+ "  ");
                 else
-                    System.out.print('\t');
-                if( col == 7 )
-                    System.out.println('\n');
+                    System.out.print("   ");
+                for( int col = 0; col < 8; col++ ) {
+                    if( row%2 == col%2 ) {
+                        if( reps == 1 ) {
+                            currVal = getSquareVal(row*4+col/2);
+                            if( currVal == 0 )
+                                System.out.print(ANSI_RED_BACKGROUND + "     " + ANSI_RESET);
+                            else if( currVal == 1 )
+                                System.out.print(ANSI_RED_BACKGROUND + ANSI_BLUE + "  O  " + ANSI_RESET);
+                            else if( currVal == 2)
+                                System.out.print(ANSI_RED_BACKGROUND + "  O  " + ANSI_RESET);
+                            else if( currVal == 3)
+                                System.out.print(ANSI_RED_BACKGROUND + ANSI_BLUE + "  K  " + ANSI_RESET);
+                            else
+                                System.out.print(ANSI_RED_BACKGROUND + "  K  " + ANSI_RESET);
+                        }
+                        else
+                            System.out.print(ANSI_RED_BACKGROUND + "     "+ ANSI_RESET);
+                    }
+                    else
+                        System.out.print("     ");
+                    if( col == 7 )
+                        System.out.print('\n');
+                }
             }
         }
+        System.out.println("     A    B    C    D    E    F    G    H");
     }
     
     // Return 3 bit value at specified square
@@ -127,29 +154,59 @@ class board {
         return numValidMoves[player]>0 ? true : false;
     }
 
+    public String ind2str( int sq ) {
+        String row = Integer.toString(sq/4+1);
+        String col = null;
+        if( (sq/4)%2 == 0 ) {
+            if( sq%4 == 0 )
+                col = new String("A");
+            else if( sq%4 == 1 )
+                col = new String("C");
+            else if( sq%4 == 2 )
+                col = new String("E");
+            else
+                col = new String("G");
+        }
+        else {
+            if( sq%4 == 0 )
+                col = new String("B");
+            else if( sq%4 == 1 )
+                col = new String("D");
+            else if( sq%4 == 2 )
+                col = new String("F");
+            else
+                col = new String("H");
+        }
+        return col.concat(row);
+    }
+
     public void printValidMoves(int player) {
         if(mustJump)
             while(validMoves[player][firstValidMove][2] == 0)
                 firstValidMove++;
-        System.out.println("Printing " + Integer.toString(numValidMoves[player]-firstValidMove) + " valid moves for player " + player);
+        System.out.print("Printing " + Integer.toString(numValidMoves[player]-firstValidMove) + " valid moves for player ");
+        if(player == 1)
+            System.out.println("1");
+        else
+            System.out.println("2");
         for( int ii = firstValidMove; ii < numValidMoves[player]; ii++) {
             for( int jj = 0; jj < maxJumps+2; jj++) {
                 if(jj == 0) {
-                    System.out.print("Move #" + Integer.toString(ii-firstValidMove+1) + "\t \t Start: ");
-                    System.out.print(validMoves[player][ii][jj]);
+                    System.out.print("Move#" + Integer.toString(ii-firstValidMove+1) + "\t \t Start: ");
+                    System.out.print(ind2str(validMoves[player][ii][jj]));
                 }
                 else if(jj == 1) {
                     System.out.print("End: ");
-                    System.out.print(validMoves[player][ii][jj]);
+                    System.out.print(ind2str(validMoves[player][ii][jj])+ '\t');
                 }
                 else if(jj == 2 && validMoves[player][ii][2] != 0) {
                     System.out.print("Jumped: ");
-                    System.out.print(validMoves[player][ii][jj]);
+                    System.out.print(ind2str(validMoves[player][ii][jj]));
                 }
                 else if (validMoves[player][ii][jj] == 0)
                     break;
                 else 
-                    System.out.print(validMoves[player][ii][jj]);
+                    System.out.print(ind2str(validMoves[player][ii][jj]));
                 System.out.print('\t');
             }
             System.out.println(' ');
@@ -233,8 +290,54 @@ class board {
             else
                 boardState[move[ii]/8] -= getSquareVal(move[ii]) << (move[ii]&7)*3;
         }
-// Add in promotion to king here
     }
+
+    public int heuristic(int player) {
+        int res, sqVal;
+        for( int sq = 0; sq < 32; sq++) {
+            sqVal = getSquareVal(sq);
+            if( sqVal == 0 )
+                continue;
+            if( sqVal % 2 == player ) {
+                if( sqVal > 2 )
+                    res += 15;
+                else
+                    res += 10;
+            }
+            else {
+                if( sqVal > 2 )
+                    res -= 15;
+                else
+                    res -= 10;
+            }
+        }
+        return res;
+    }
+
+    public void aiMove( int player, long time ) {
+        mustJump = false;
+        firstValidMove = 0;
+        while( numValidMoves[player] > 0 ) {
+            for(int ii = 0; ii < maxJumps+2; ii++ ) 
+                validMoves[player][numValidMoves[player]-1][ii] = 0;
+            numValidMoves[player]--;
+        }
+        int depth = 1;
+        long timeLim = time-1000000;
+        int[] bestMove, thisMove;
+        long t0 = System.nanoTime();
+        long t1 = t0;
+
+        while(t1 - t0 < timeLim ) {
+            thisMove = alphaBeta( depth, negINF, posINF, player, t1, t0, timeLim);
+            if( thisMove != null )
+                bestMove = thisMove;
+            depth++;
+        }
+        validMoves[player]
+    }
+
+    public void alphaBeta( int player, long time, 
 
     public boolean play(int turn, Scanner sc) {
         int inputMove = 0;
