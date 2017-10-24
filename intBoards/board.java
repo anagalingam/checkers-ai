@@ -345,19 +345,20 @@ class board {
     public boolean aiMove( int player, long time ) {    // Returns TRUE if move was performed, FALSE if AI has no moves.
         mustJump = false;
         firstValidMove = 0;
-        while( numValidMoves[player] > 0 ) {
-            for(int ii = 0; ii < maxJumps+2; ii++ ) 
-                validMoves[player][numValidMoves[player]-1][ii] = 0;
-            numValidMoves[player]--;
+        for( int p = 0; p < 2; p++ ) {
+            while( numValidMoves[p] > 0 ) {
+                for(int ii = 0; ii < moveLen; ii++ ) 
+                    validMoves[p][numValidMoves[p]-1][ii] = 0;
+                numValidMoves[p]--;
+            }
         }
         int depth = 1;
         long timeLim = time-1000000;
         int[] bestMove, thisMove;
-        bestMove = new int[12];
         long t0 = System.nanoTime();
 
         while( true ) {
-            thisMove = alphaBeta( depth, negINF, posINF, player, true, t0, timeLim);
+            thisMove = alphaBeta( depth, negINF, posINF, player, true, t0, timeLim+t0);
             if( thisMove == null )
                 break;
             bestMove = thisMove;
@@ -366,11 +367,12 @@ class board {
         applySingleMove(bestMove);
     }
 
-    public int[] alphaBeta( int depth, int alpha, int beta, int player, boolean isMaxPlayer, long t0, long timeLim) {
+    public int[] alphaBeta( int depth, int alpha, int beta, int player, boolean isMaxPlayer, long timeLim) {
         int[] res, tmp;
         int v;
+        mustJump = false;
 
-        if( System.nanoTime() - t0 > timeLim )
+        if( System.nanoTime() > timeLim )
             return null;
         if( depth == 0 ) {
             res = new int[moveLen];
@@ -438,9 +440,10 @@ class board {
     }
 
 
-    private void recursiveBestMoveFinder( int startSq, int currentSq, int numJumpsSoFar , int player , boolean king , int depth, int alpha, int beta, long t0, long timeLim ) {
+    private int[] recursiveBestMoveFinder( int startSq, int currentSq, int numJumpsSoFar , int player , boolean king , int depth, int alpha, int beta, long timeLim ) {
         int tmpSq, startDir, stopDir, currentSqVal, endSqVal, jumpedSqVal;
-        int[] currMove;
+        int[] tmpMove, bestMove;
+        boolean tmpMustJump;
         if( king ) {
             startDir = 0;
             stopDir = 4;
@@ -460,7 +463,16 @@ class board {
                     validMoves[player][numValidMoves[player]][0] = startSq;
                     validMoves[player][numValidMoves[player]][1] = tmpSq;
                     numValidMoves[player]++;
-                    applySingleMove(
+                    validMoves[(player+1)%2][numValidMoves[(player+1)%2]][0] = getSquareVal(startSq);
+                    validMoves[(player+1)%2][numValidMoves[(player+1)%2]][1] = 0;
+                    numValidMoves[(player+1)%2]++;
+                    tmpMustJump = false;
+                    applySingleMove( validMoves[player][numValidMoves[player]-1] );
+                    tmpMove = alphaBeta(depth-1, alpha, beta, (player+1)%2, !isMaxPlayer, timeLim);
+                    if( tmpMove == null )
+                        return null;
+                    if( tmpMove[moveLen-1] >  
+
                 }
             }
             else if( getSquareVal(tmpSq) != 0 && (getSquareVal(tmpSq)%2) == (player == 0 ? 1 : 0) && getSquareVal(getSquareDir(tmpSq,dir^1)) == 0) {
