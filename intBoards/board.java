@@ -363,11 +363,13 @@ class board {
             bestMove = thisMove;
             depth++;
         }
-        
+        applySingleMove(bestMove);
     }
 
     public int[] alphaBeta( int depth, int alpha, int beta, int player, boolean isMaxPlayer, long t0, long timeLim) {
-        int[] res;
+        int[] res, tmp;
+        int v;
+
         if( System.nanoTime() - t0 > timeLim )
             return null;
         if( depth == 0 ) {
@@ -386,7 +388,16 @@ class board {
         }
         if( anyMove == 0 ) {    // If no moves, you lose. Return worst heuristic for this player.
             res = new int[moveLen];
-            return isMaxPlayer ? negINF : posINF;
+            res[moveLen-1] = isMaxPlayer ? negINF : posINF;
+            return res;
+        }
+        if( isMaxPlayer ) {
+            v = negINF;
+            for( int sq = 0; sq < 32; sq++ ) {
+                sqVal = getSquareVal(sq);
+                if( sqVal > 0 && (sqVal&1) == player )
+
+
 
         // Below for loop finds the best move in this subtree
         for( int sq = 0; sq < 32; sq++ ) {
@@ -394,7 +405,7 @@ class board {
             if( sqVal > 0 && (sqVal&1) == player )
                 recursiveBestMoveFinder( sq, sq, 0, player, (sqVal > 2 ? true : false)), alpha, beta, ;
         }
-        applySingleMove(bestMove);
+
     }
 
     private int findAnyMove( int startSq, int player, boolean king ) {
@@ -427,8 +438,9 @@ class board {
     }
 
 
-    private void recursiveBestMoveFinder( int startSq, int currentSq, int numJumpsSoFar , int player , boolean king ) {
+    private void recursiveBestMoveFinder( int startSq, int currentSq, int numJumpsSoFar , int player , boolean king , int depth, int alpha, int beta, long t0, long timeLim ) {
         int tmpSq, startDir, stopDir, currentSqVal, endSqVal, jumpedSqVal;
+        int[] currMove;
         if( king ) {
             startDir = 0;
             stopDir = 4;
@@ -443,11 +455,12 @@ class board {
         }
         for( int dir = startDir; dir < stopDir; dir++ ) {
             tmpSq = getSquareDir(currentSq,dir);
-            if( getSquareVal(tmpSq) == 0 ) {
-                if(!mustJump) {
+            if( !mustJump ) {
+                if( getSquareVal(tmpSq) == 0 ) {
                     validMoves[player][numValidMoves[player]][0] = startSq;
                     validMoves[player][numValidMoves[player]][1] = tmpSq;
                     numValidMoves[player]++;
+                    applySingleMove(
                 }
             }
             else if( getSquareVal(tmpSq) != 0 && (getSquareVal(tmpSq)%2) == (player == 0 ? 1 : 0) && getSquareVal(getSquareDir(tmpSq,dir^1)) == 0) {
