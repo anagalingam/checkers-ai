@@ -52,13 +52,14 @@ class board {
     private int[] boardState;
     private final static int maxValidMoves = 1000;  // Overestimating. Each piece would have on avg 41.667 valid moves
     private final static int maxJumps = 9;          // Looked up online
+    private final static int moveLen = 12;
     private int[][][] validMoves;
     public int[] numValidMoves = {0 , 0};
     private boolean mustJump = false;
     private int firstValidMove = 0;
 
-    public static final int posINF = Integer.MAX_VALUE;
-    public static final int negINF = Integer.MIN_VALUE;
+    public static final int posINF = 2000000000;
+    public static final int negINF = -2000000000;
     public static final String ANSI_RESET = "\u001B[0m";
     public static final String ANSI_RED_BACKGROUND = "\u001B[41m";
     public static final String ANSI_BLUE = "\u001B[34m";
@@ -67,13 +68,13 @@ class board {
     public board() {
         // Int Array
         boardState = new int[]{ 4793490, 1170 , 2396160, 2396745 };
-        validMoves = new int[2][maxValidMoves][maxJumps+2];
+        validMoves = new int[2][maxValidMoves][moveLen];
     }
     
     // inputBoard must be checked by caller
     public board(int[] inputBoard) {
         boardState = inputBoard;
-        validMoves = new int[2][maxValidMoves][maxJumps+2];
+        validMoves = new int[2][maxValidMoves][moveLen];
     }
 
     public void printBoard() {
@@ -276,8 +277,8 @@ class board {
 
     public void applySingleMove( int player, int moveNumber ) {
         int[] move = validMoves[player][moveNumber+firstValidMove];
-        System.out.print("Applying move ");
-        printArray(move);
+        //System.out.print("Applying move ");
+        //printArray(move);
         int startSqVal = getSquareVal(move[0]);
         int endSqVal = kingMe(player,move[1]) && startSqVal<3 ? startSqVal+2 : startSqVal;
         for( int ii = 0; ii < maxJumps+2; ii++ ) {
@@ -291,8 +292,35 @@ class board {
                 boardState[move[ii]/8] -= getSquareVal(move[ii]) << (move[ii]&7)*3;
         }
     }
+    
+    public void applySingleMove( int[] move ) {
+        //System.out.print("Applying move ");
+        //printArray(move);
+        int startSqVal = getSquareVal(move[0]);
+        int endSqVal = kingMe(player,move[1]) && startSqVal<3 ? startSqVal+2 : startSqVal;
+         for( int ii = 0; ii < maxJumps+2; ii++ ) {
+            if( ii == 0 )
+                boardState[move[ii]/8] -= startSqVal << (move[ii]&7)*3;
+            else if( ii == 1 )
+                boardState[move[ii]/8] += endSqVal << (move[ii]&7)*3;
+            else if( move[ii] == 0 )
+                break;
+            else
+                boardState[move[ii]/8] -= getSquareVal(move[ii]) << (move[ii]&7)*3;
+        }
+    }
 
-    public int heuristic(int player) {
+    public void revertSingleMove( int[] move , int[] sqVals) {
+        boardState[move[0]/8] += sqVals[0] << (move[0]&7)*3;
+        boardState[move[1]/8] -= sqVals[0] << (move[1]&7)*3;
+        for(int ii = 0; ii < maxJumps; ii++ ) {
+            if(move[ii+2] == 0)
+                break;
+            boardState[move[ii+2]/8] += sqVals[ii+2] << (move[ii+2]&7)*3;
+        }
+    }
+
+    public int heuristic(int player, boolean isMaxPlayer) {
         int res, sqVal;
         for( int sq = 0; sq < 32; sq++) {
             sqVal = getSquareVal(sq);
@@ -311,10 +339,10 @@ class board {
                     res -= 10;
             }
         }
-        return res;
+        return isMaxPlayer ? res : -1*res;
     }
 
-    public void aiMove( int player, long time ) {
+    public boolean aiMove( int player, long time ) {    // Returns TRUE if move was performed, FALSE if AI has no moves.
         mustJump = false;
         firstValidMove = 0;
         while( numValidMoves[player] > 0 ) {
@@ -325,19 +353,125 @@ class board {
         int depth = 1;
         long timeLim = time-1000000;
         int[] bestMove, thisMove;
+        bestMove = new int[12];
         long t0 = System.nanoTime();
-        long t1 = t0;
 
-        while(t1 - t0 < timeLim ) {
-            thisMove = alphaBeta( depth, negINF, posINF, player, t1, t0, timeLim);
-            if( thisMove != null )
-                bestMove = thisMove;
+        while( true ) {
+            thisMove = alphaBeta( depth, negINF, posINF, player, true, t0, timeLim);
+            if( thisMove == null )
+                break;
+            bestMove = thisMove;
             depth++;
         }
-        validMoves[player]
+        
     }
 
-    public void alphaBeta( int player, long time, 
+    public int[] alphaBeta( int depth, int alpha, int beta, int player, boolean isMaxPlayer, long t0, long timeLim) {
+        int[] res;
+        if( System.nanoTime() - t0 > timeLim )
+            return null;
+        if( depth == 0 ) {
+            res = new int[moveLen];
+            res[moveLen-1] = heuristic();
+            return res;
+        }
+        int sqVal;
+
+        // Below for loop checks for terminal node and sets mustJump flag if necessary.
+        int anyMove = 0;
+        for( int sq = 0; sq < 32; sq++ ) {
+            sqVal = getSquareVal(sq);
+            if( sqVal > 0 && (sqVal&1) == player )
+                anyMove += findAnyMove( sq, player, sqVal > 2 ? true : false );
+        }
+        if( anyMove == 0 ) {    // If no moves, you lose. Return worst heuristic for this player.
+            res = new int[moveLen];
+            return isMaxPlayer ? negINF : posINF;
+
+        // Below for loop finds the best move in this subtree
+        for( int sq = 0; sq < 32; sq++ ) {
+            sqVal = getSquareVal(sq);
+            if( sqVal > 0 && (sqVal&1) == player )
+                recursiveBestMoveFinder( sq, sq, 0, player, (sqVal > 2 ? true : false)), alpha, beta, ;
+        }
+        applySingleMove(bestMove);
+    }
+
+    private int findAnyMove( int startSq, int player, boolean king ) {
+        int tmpSq, startDir, stopDir, currentSqVal, endSqVal, jumpedSqVal;
+        int res = 0;
+        if( king ) {
+            startDir = 0;
+            stopDir = 4;
+        }
+        else if( player == 0) {
+            startDir = 0;
+            stopDir = 2;
+        }
+        else {
+            startDir = 2;
+            stopDir = 4;
+        }
+        for( int dir = startDir; dir < stopDir; dir++ ) {
+            tmpSq = getSquareDir(currentSq,dir);
+            if( getSquareVal(tmpSq) == 0 ) {
+                res = 1;
+            }
+            else if( getSquareVal(tmpSq) != 0 && (getSquareVal(tmpSq)%2) == (player == 0 ? 1 : 0) && getSquareVal(getSquareDir(tmpSq,dir^1)) == 0) {
+                mustJump = true;
+                res = 1;
+                return res;
+            }
+        }
+        return res;
+    }
+
+
+    private void recursiveBestMoveFinder( int startSq, int currentSq, int numJumpsSoFar , int player , boolean king ) {
+        int tmpSq, startDir, stopDir, currentSqVal, endSqVal, jumpedSqVal;
+        if( king ) {
+            startDir = 0;
+            stopDir = 4;
+        }
+        else if( player == 0) {
+            startDir = 0;
+            stopDir = 2;
+        }
+        else {
+            startDir = 2;
+            stopDir = 4;
+        }
+        for( int dir = startDir; dir < stopDir; dir++ ) {
+            tmpSq = getSquareDir(currentSq,dir);
+            if( getSquareVal(tmpSq) == 0 ) {
+                if(!mustJump) {
+                    validMoves[player][numValidMoves[player]][0] = startSq;
+                    validMoves[player][numValidMoves[player]][1] = tmpSq;
+                    numValidMoves[player]++;
+                }
+            }
+            else if( getSquareVal(tmpSq) != 0 && (getSquareVal(tmpSq)%2) == (player == 0 ? 1 : 0) && getSquareVal(getSquareDir(tmpSq,dir^1)) == 0) {
+                mustJump = true;
+                validMoves[player][numValidMoves[player]][0] = startSq;
+                validMoves[player][numValidMoves[player]][1] = getSquareDir(tmpSq,dir^1);
+                for(int ii = 0; ii < numJumpsSoFar; ii++)
+                    validMoves[player][numValidMoves[player]][2+ii] = validMoves[player][numValidMoves[player]-1][2+ii];
+                validMoves[player][numValidMoves[player]][2+numJumpsSoFar] = tmpSq;
+                numValidMoves[player]++;
+
+                currentSqVal = getSquareVal(currentSq);
+                jumpedSqVal = getSquareVal(tmpSq);
+
+                applySingleJump( currentSq, getSquareDir(tmpSq,dir^1), tmpSq, currentSqVal, jumpedSqVal);
+                
+                recursiveMoveFinder( startSq, getSquareDir(tmpSq,dir^1), numJumpsSoFar+1 , player , king );
+                
+                removeSingleJump( currentSq, getSquareDir(tmpSq,dir^1), tmpSq, currentSqVal, jumpedSqVal);
+            }
+        }
+    }
+
+
 
     public boolean play(int turn, Scanner sc) {
         int inputMove = 0;
