@@ -50,12 +50,13 @@ class board {
     //  A matrix of all valid moves for each player in the given boardState is stored
 
     private int[] boardState;
-    private final static int maxValidMoves = 1000;  // Overestimating. Each piece would have on avg 41.667 valid moves
+    private final static int maxValidMoves = 500;  // Overestimating.
     private final static int maxJumps = 9;          // Looked up online
-    private final static int moveLen = 12;
-    private int[][][] validMoves;
-    public int[] numValidMoves = {0 , 0};
+    private final static int moveLen = maxJumps+3;  // First 2 indices are startSq, endSq, last index is heuristic of move
+    private int[][] validMoves;
+    public int numValidMoves = 0;
     private boolean mustJump = false;
+    private int[] currMoveSqVals = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; 
 
     public static final int posINF = 2000000000;
     public static final int negINF = -2000000000;
@@ -71,13 +72,13 @@ class board {
     public board() {
         // Int Array
         boardState = new int[]{ 4793490, 1170 , 2396160, 2396745 };
-        validMoves = new int[2][maxValidMoves][moveLen];
+        validMoves = new int[maxValidMoves][moveLen];
     }
     
     // inputBoard must be checked by caller
     public board(int[] inputBoard) {
         boardState = inputBoard;
-        validMoves = new int[2][maxValidMoves][moveLen];
+        validMoves = new int[maxValidMoves][moveLen];
     }
 
     public void printBoard() {
@@ -143,10 +144,10 @@ class board {
 
     public boolean updateValidMoves(int player) {
         mustJump = false;
-        while( numValidMoves[player] > 0 ) {
+        while( numValidMoves > 0 ) {
             for(int ii = 0; ii < moveLen; ii++ ) 
-                validMoves[player][numValidMoves[player]-1][ii] = 0;
-            numValidMoves[player]--;
+                validMoves[numValidMoves-1][ii] = 0;
+            numValidMoves--;
         }
         int sqVal;
         int anyMove = 0;
@@ -193,29 +194,29 @@ class board {
     }
 
     public void printValidMoves(int player) {
-        System.out.print("Printing " + Integer.toString(numValidMoves[player]) + " valid moves for player ");
+        System.out.print("Printing " + Integer.toString(numValidMoves) + " valid moves for player ");
         if(player == 1)
             System.out.println("1");
         else
             System.out.println("2");
-        for( int ii = 0; ii < numValidMoves[player]; ii++) {
+        for( int ii = 0; ii < numValidMoves; ii++) {
             for( int jj = 0; jj < maxJumps+2; jj++) {
                 if(jj == 0) {
                     System.out.print("Move#" + Integer.toString(ii+1) + "\t \t Start: ");
-                    System.out.print(ind2str(validMoves[player][ii][jj]));
+                    System.out.print(ind2str(validMoves[ii][jj]));
                 }
                 else if(jj == 1) {
                     System.out.print("End: ");
-                    System.out.print(ind2str(validMoves[player][ii][jj])+ '\t');
+                    System.out.print(ind2str(validMoves[ii][jj])+ '\t');
                 }
-                else if(jj == 2 && validMoves[player][ii][2] != 0) {
+                else if(jj == 2 && validMoves[ii][2] != 0) {
                     System.out.print("Jumped: ");
-                    System.out.print(ind2str(validMoves[player][ii][jj]));
+                    System.out.print(ind2str(validMoves[ii][jj]));
                 }
-                else if (validMoves[player][ii][jj] == 0)
+                else if (validMoves[ii][jj] == 0)
                     break;
                 else 
-                    System.out.print(ind2str(validMoves[player][ii][jj]));
+                    System.out.print(ind2str(validMoves[ii][jj]));
                 System.out.print('\t');
             }
             System.out.println(' ');
@@ -240,24 +241,30 @@ class board {
             tmpSq = getSquareDir(currentSq,dir);
             if( !mustJump) {
                 if( getSquareVal(tmpSq) == 0 ) {
-                    validMoves[player][numValidMoves[player]][0] = startSq;
-                    validMoves[player][numValidMoves[player]][1] = tmpSq;
+                    validMoves[numValidMoves][0] = startSq;
+                    validMoves[numValidMoves][1] = tmpSq;
                     // Below ensures non-lazy deletion in move Stack
-                    for(int ii = 2; ii < moveLen; ii++)
-                        validMoves[player][numValidMoves[player]][ii] = 0;
-                    numValidMoves[player]++;
+                    for(int ii = 2; ii < moveLen-1; ii++)
+                        validMoves[numValidMoves][ii] = 0;
+                    validMoves[numValidMoves][moveLen-1] = Integer.MIN_VALUE;
+                    System.out.print("Move# " + Integer.toString(numValidMoves));
+                    printArray(validMoves[numValidMoves]);
+                    numValidMoves++;
                 }
             }
             else if( getSquareVal(tmpSq) != 0 && (getSquareVal(tmpSq)%2) == (player == 0 ? 1 : 0) && getSquareVal(getSquareDir(tmpSq,dir^1)) == 0) {
-                validMoves[player][numValidMoves[player]][0] = startSq;
-                validMoves[player][numValidMoves[player]][1] = getSquareDir(tmpSq,dir^1);
+                validMoves[numValidMoves][0] = startSq;
+                validMoves[numValidMoves][1] = getSquareDir(tmpSq,dir^1);
                 for(int ii = 0; ii < numJumpsSoFar; ii++)
-                    validMoves[player][numValidMoves[player]][2+ii] = validMoves[player][numValidMoves[player]-1][2+ii];
-                validMoves[player][numValidMoves[player]][2+numJumpsSoFar] = tmpSq;
+                    validMoves[numValidMoves][2+ii] = validMoves[numValidMoves-1][2+ii];
+                validMoves[numValidMoves][2+numJumpsSoFar] = tmpSq;
                 // Below ensures non-lazy deletion in move Stack
                 for( int ii = 3+numJumpsSoFar; ii < moveLen; ii++)
-                    validMoves[player][numValidMoves[player]][ii] = 0;
-                numValidMoves[player]++;
+                    validMoves[numValidMoves][ii] = 0;
+                validMoves[numValidMoves][moveLen-1] = Integer.MIN_VALUE;
+                numValidMoves++;
+                System.out.print("Move# " + Integer.toString(numValidMoves-1));
+                printArray(validMoves[numValidMoves-1]);
 
                 currentSqVal = getSquareVal(currentSq);
                 jumpedSqVal = getSquareVal(tmpSq);
@@ -289,12 +296,12 @@ class board {
     }
 
     public void applySingleMove( int player, int moveNumber ) {
-        int[] move = validMoves[player][moveNumber];
+        int[] move = validMoves[moveNumber];
         //System.out.print("Applying move ");
         //printArray(move);
         int startSqVal = getSquareVal(move[0]);
         int endSqVal = kingMe(player,move[1]) && startSqVal<3 ? startSqVal+2 : startSqVal;
-        for( int ii = 0; ii < maxJumps+2; ii++ ) {
+        for( int ii = 0; ii < moveLen-1; ii++ ) {
             if( ii == 0 )
                 boardState[move[ii]/8] -= startSqVal << (move[ii]&7)*3;
             else if( ii == 1 )
@@ -305,9 +312,26 @@ class board {
                 boardState[move[ii]/8] -= getSquareVal(move[ii]) << (move[ii]&7)*3;
         }
     }
+    // Same function, but passed a move, not a moveNumber on the validMoves stack
+    // Keep two functions to avoid two function calls for the version with just moveNumber
+    // since that version is used most in the alphabeta search
+    public void applySingleMove( int player, int move[] ) {
+        int startSqVal = getSquareVal(move[0]);
+        int endSqVal = kingMe(player,move[1]) && startSqVal<3 ? startSqVal+2 : startSqVal;
+        for( int ii = 0; ii < moveLen-1; ii++ ) {
+            if( ii == 0 )
+                boardState[move[ii]/8] -= startSqVal << (move[ii]&7)*3;
+            else if( ii == 1 )
+                boardState[move[ii]/8] += endSqVal << (move[ii]&7)*3;
+            else if( move[ii] == 0 )
+                break;
+            else
+                boardState[move[ii]/8] -= getSquareVal(move[ii]) << (move[ii]&7)*3;
+        }
+    }       
 
-    public void revertSingleMove( int player, int moveNumber, int[] sqVals ) {
-        int[] move = validMoves[player][moveNumber];
+    public void revertSingleMove( int[] sqVals, int moveNum) {
+        int[] move = validMoves[moveNum];
         boardState[move[0]/8] += sqVals[0] << (move[0]&7)*3;
         boardState[move[1]/8] -= sqVals[0] << (move[1]&7)*3;
         for(int ii = 2; ii < maxJumps+2; ii++ ) {
@@ -315,37 +339,11 @@ class board {
                 break;
             boardState[move[ii]/8] += sqVals[ii] << (move[ii]&7)*3;
         }
-    }       
+    } 
     
-/*    public void applySingleMove( int[] move ) {
-        //System.out.print("Applying move ");
-        //printArray(move);
-        int startSqVal = getSquareVal(move[0]);
-        int endSqVal = kingMe(player,move[1]) && startSqVal<3 ? startSqVal+2 : startSqVal;
-         for( int ii = 0; ii < maxJumps+2; ii++ ) {
-            if( ii == 0 )
-                boardState[move[ii]/8] -= startSqVal << (move[ii]&7)*3;
-            else if( ii == 1 )
-                boardState[move[ii]/8] += endSqVal << (move[ii]&7)*3;
-            else if( move[ii] == 0 )
-                break;
-            else
-                boardState[move[ii]/8] -= getSquareVal(move[ii]) << (move[ii]&7)*3;
-        }
-    }
-
-    public void revertSingleMove( int[] move , int[] sqVals) {
-        boardState[move[0]/8] += sqVals[0] << (move[0]&7)*3;
-        boardState[move[1]/8] -= sqVals[0] << (move[1]&7)*3;
-        for(int ii = 0; ii < maxJumps; ii++ ) {
-            if(move[ii+2] == 0)
-                break;
-            boardState[move[ii+2]/8] += sqVals[ii+2] << (move[ii+2]&7)*3;
-        }
-    }
-*/
     public int heuristic(int player, boolean isMaxPlayer) {
         int res, sqVal;
+        res = 0;
         for( int sq = 0; sq < 32; sq++) {
             sqVal = getSquareVal(sq);
             if( sqVal == 0 )
@@ -369,37 +367,62 @@ class board {
     public boolean aiMove( int player, long time ) {    // Returns TRUE if move was performed, FALSE if AI has no moves.
         mustJump = false;
         for( int p = 0; p < 2; p++ ) {
-            while( numValidMoves[p] > 0 ) {
+            while( numValidMoves > 0 ) {
                 for(int ii = 0; ii < moveLen; ii++ ) 
-                    validMoves[p][numValidMoves[p]-1][ii] = 0;
-                numValidMoves[p]--;
+                    validMoves[numValidMoves-1][ii] = 0;
+                numValidMoves--;
             }
         }
+        int sqVal;
+        int anyMove = 0;
+        for( int sq = 0; sq < 32; sq++ ) {
+            sqVal = getSquareVal(sq);
+            if( sqVal > 0 && (sqVal&1) == player )
+                anyMove += findAnyMove( sq, player, sqVal > 2 ? true : false );
+        }
+        if( anyMove == 0 ) {    // If no moves, AI loses.
+            return false;
+        }
+
         int depth = 1;
         long timeLim = time-1000000;
-        int[] bestMove, thisMove;
+        int[] bestMove = new int[moveLen];
         long t0 = System.nanoTime();
 
         while( true ) {
-            thisMove = alphaBeta( depth, negINF, posINF, player, true, 0, timeLim+t0);
-            if( thisMove == null )
+            System.out.println("Depth is " + depth );
+            numValidMoves = 1;      // Bottom of Stack is reserved for best heuristic value
+            validMoves[0][moveLen-1] = Integer.MIN_VALUE;
+            alphaBeta( depth, negINF, posINF, player, true, 0, timeLim+t0);
+            if( validMoves[0][moveLen-1] == Integer.MIN_VALUE )
                 break;
-            bestMove = thisMove;
+            printArray(validMoves[0]);
+            for( int move = 1; move < numValidMoves; move++ ) {
+                System.out.print("Move#" + move );
+                printArray(validMoves[move]);
+                if( validMoves[move][moveLen-1] == validMoves[0][moveLen-1] ) {
+                    for( int ii = 0; ii < moveLen; ii++ )
+                        bestMove[ii] = validMoves[move][ii];
+                    break;
+                }
+            }
             depth++;
+            if( depth > 1 )
+                break;
         }
         applySingleMove(player, bestMove);
+        return true;
     }
     // appliedMoveNum is the move (ply of the gametree) that got me to the current boardState
-    // alphaBeta must return its best value, v, to the move that created it. 
-    public int[] alphaBeta( int depth, int alpha, int beta, int player, boolean isMaxPlayer, int appliedMoveNum, long timeLim) {
+    // alphaBeta must assign its return value to the appliedMoveNum that created it.
+    public void alphaBeta( int depth, int alpha, int beta, int player, boolean isMaxPlayer, int appliedMoveNum, long timeLim) {
         mustJump = false;
 
         if( System.nanoTime() > timeLim )
-            return null;
+            return;
         if( depth == 0 ) {
-            res = new int[moveLen];
-            res[moveLen-1] = heuristic();
-            return res;
+            validMoves[appliedMoveNum][moveLen-1] = heuristic(player, isMaxPlayer);
+            return;
         }
         int sqVal;
 
@@ -411,42 +434,54 @@ class board {
                 anyMove += findAnyMove( sq, player, sqVal > 2 ? true : false );
         }
         if( anyMove == 0 ) {    // If no moves, you lose. Return worst heuristic for this player.
-            res = new int[moveLen];
-            res[moveLen-1] = isMaxPlayer ? negINF : posINF;
-            return res;
+            validMoves[appliedMoveNum][moveLen-1] = isMaxPlayer ? negINF : posINF;
+            return;
         }
         // Below for loop finds all moves for the current boardState
 
-        firstValidMove = numValidMoves[player];
+        int firstValidMove = numValidMoves;
         for( int sq = 0; sq < 32; sq++ ) {
             sqVal = getSquareVal(sq);
             if( sqVal > 0 && (sqVal&1) == player )
                 recursiveMoveFinder( sq, sq, 0, player, (sqVal > 2 ? true : false));
         }
-
+        int v;
         if( isMaxPlayer ) {
-            v = 
-            for( int moveNum = firstValidMove; moveNum < numValidMoves[player]; moveNum++ ) {
-                applySingleMove(moveNum); 
-
-    }
-
-    public int[] maxMove( int[] v, int[] alphaBetaRes ) {
-        return v[moveLen-1] > alphaBetaRes[moveLen-1] ? v : alphaBetaRes;
-    }
-
-    public int[] minMove( int[] v, int[] alphaBetaRes ) {
-        return v[moveLen-1] < alphaBetaRes[moveLen-1] ? v : alphaBetaRes;
-    }
-    public int maxAlpha( int alpha, int[] v ) {
-        return alpha > v[moveLen-1] ? alpha : v[moveLen-1];
-    }
-    public int minBeta( int beta, int[] v ) {
-        return beta < v[moveLen-1] ? beta : v[moveLen-1];
+            v = negINF; 
+            for( int moveNum = firstValidMove; moveNum < numValidMoves; moveNum++ ) {
+                for( int ii = 0; ii < moveLen-1; ii++ )
+                    currMoveSqVals[ii] = getSquareVal(validMoves[moveNum][ii]);
+                applySingleMove(player, moveNum);
+                alphaBeta( depth-1, alpha, beta, (player+1)&1, !isMaxPlayer, moveNum, timeLim );
+                revertSingleMove(currMoveSqVals, moveNum);
+                v = v > validMoves[moveNum][moveLen-1] ? v : validMoves[moveNum][moveLen-1];
+                alpha = alpha > v ? alpha : v;
+                if( beta <= alpha )
+                    break;
+            }
+        }
+        else {      //Minimizing Player
+            v = posINF;
+            for( int moveNum = firstValidMove; moveNum < numValidMoves; moveNum++ ) {
+                for( int ii = 0; ii < moveLen-1; ii++ )
+                    currMoveSqVals[ii] = getSquareVal(validMoves[moveNum][ii]);
+                applySingleMove(player,moveNum);
+                alphaBeta( depth-1, alpha, beta, (player+1)&1, !isMaxPlayer, moveNum, timeLim);
+                revertSingleMove(currMoveSqVals,moveNum);
+                v = v < validMoves[moveNum][moveLen-1] ? v : validMoves[moveNum][moveLen-1];
+                beta = beta < v ? beta : v;
+                if( beta <= alpha )
+                    break;
+            }
+        }
+        while( numValidMoves > firstValidMove )
+            numValidMoves--;
+        validMoves[appliedMoveNum][moveLen-1] = v;
+        return;
     }
 
     private int findAnyMove( int startSq, int player, boolean king ) {
-        int tmpSq, startDir, stopDir, currentSqVal, endSqVal, jumpedSqVal;
+        int tmpSq, startDir, stopDir;
         int res = 0;
         if( king ) {
             startDir = 0;
@@ -461,7 +496,7 @@ class board {
             stopDir = 4;
         }
         for( int dir = startDir; dir < stopDir; dir++ ) {
-            tmpSq = getSquareDir(currentSq,dir);
+            tmpSq = getSquareDir(startSq,dir);
             if( getSquareVal(tmpSq) == 0 ) {
                 res = 1;
             }
@@ -474,66 +509,15 @@ class board {
         return res;
     }
 
-
-    private int[] recursiveBestMoveFinder( int startSq, int currentSq, int numJumpsSoFar , int player , boolean king , int depth, int alpha, int beta, long timeLim ) {
-        int tmpSq, startDir, stopDir, currentSqVal, endSqVal, jumpedSqVal;
-        int[] tmpMove, bestMove;
-        boolean tmpMustJump;
-        if( king ) {
-            startDir = 0;
-            stopDir = 4;
-        }
-        else if( player == 0) {
-            startDir = 0;
-            stopDir = 2;
-        }
-        else {
-            startDir = 2;
-            stopDir = 4;
-        }
-        for( int dir = startDir; dir < stopDir; dir++ ) {
-            tmpSq = getSquareDir(currentSq,dir);
-            if( !mustJump ) {
-                if( getSquareVal(tmpSq) == 0 ) {
-                    validMoves[player][numValidMoves[player]][0] = startSq;
-                    validMoves[player][numValidMoves[player]][1] = tmpSq;
-                    numValidMoves[player]++;
-                    validMoves[(player+1)%2][numValidMoves[(player+1)%2]][0] = getSquareVal(startSq);
-                    validMoves[(player+1)%2][numValidMoves[(player+1)%2]][1] = 0;
-                    numValidMoves[(player+1)%2]++;
-                    tmpMustJump = false;
-                    applySingleMove( validMoves[player][numValidMoves[player]-1] );
-                    tmpMove = alphaBeta(depth-1, alpha, beta, (player+1)%2, !isMaxPlayer, timeLim);
-                    if( tmpMove == null )
-                        return null;
-            //        if( tmpMove[moveLen-1] > 
-
-                }
-            }
-            else if( getSquareVal(tmpSq) != 0 && (getSquareVal(tmpSq)%2) == (player == 0 ? 1 : 0) && getSquareVal(getSquareDir(tmpSq,dir^1)) == 0) {
-                mustJump = true;
-                validMoves[player][numValidMoves[player]][0] = startSq;
-                validMoves[player][numValidMoves[player]][1] = getSquareDir(tmpSq,dir^1);
-                for(int ii = 0; ii < numJumpsSoFar; ii++)
-                    validMoves[player][numValidMoves[player]][2+ii] = validMoves[player][numValidMoves[player]-1][2+ii];
-                validMoves[player][numValidMoves[player]][2+numJumpsSoFar] = tmpSq;
-                numValidMoves[player]++;
-
-                currentSqVal = getSquareVal(currentSq);
-                jumpedSqVal = getSquareVal(tmpSq);
-
-                applySingleJump( currentSq, getSquareDir(tmpSq,dir^1), tmpSq, currentSqVal, jumpedSqVal);
-                
-                recursiveMoveFinder( startSq, getSquareDir(tmpSq,dir^1), numJumpsSoFar+1 , player , king );
-                
-                removeSingleJump( currentSq, getSquareDir(tmpSq,dir^1), tmpSq, currentSqVal, jumpedSqVal);
+    public boolean play(int turn, Scanner sc, boolean[] isAI, long timeLim ) {
+        if( isAI[turn%2] ) {
+            if( aiMove( turn%2, timeLim ) )
+                return true;
+            else {
+                System.out.println("Player " + Integer.toString(turn%2) + " has no more moves. Player " + Integer.toString((turn+1)%2) + " WINS!");
+                return false;
             }
         }
-    }
-
-
-
-    public boolean play(int turn, Scanner sc) {
         int inputMove = 0;
         boolean firstTry = true;
         printBoard();
@@ -542,14 +526,14 @@ class board {
             return false;
         }
         printValidMoves(turn%2);
-        while( inputMove<1 || inputMove>numValidMoves[turn%2]) {
+        while( inputMove<1 || inputMove>numValidMoves) {
             try{
                 if(firstTry) {
-                    System.out.println("Enter a move number from 1 - " + Integer.toString(numValidMoves[turn%2]));
+                    System.out.println("Enter a move number from 1 - " + Integer.toString(numValidMoves));
                     firstTry = false;
                 }
                 else {
-                    System.out.println("Invalid move. Enter a move number from 1 - " + Integer.toString(numValidMoves[turn%2]));
+                    System.out.println("Invalid move. Enter a move number from 1 - " + Integer.toString(numValidMoves));
                 }
                 inputMove = Integer.parseInt(sc.nextLine());
             }
@@ -563,9 +547,8 @@ class board {
 
     public static void printArray(int[] arr) {
         System.out.print("[ ");
-        for( int ii = 0; ii < arr.length; ii++ ) {
+        for( int ii = 0; ii < arr.length; ii++ )
             System.out.print( arr[ii] + " " );
-        }
         System.out.println("]");
     }
 }
