@@ -51,7 +51,7 @@ class board {
     //  A matrix of all valid moves for each player in the given boardState is stored
 
     private int[] boardState;
-    private final static int maxValidMoves = 1000;  // Overestimating.
+    private final static int maxValidMoves = 500;  // Overestimating.
     private final static int maxJumps = 9;          // Looked up online
     private final static int moveLen = maxJumps+3;  // First 2 indices are startSq, endSq, last index is heuristic of move
     private int[][] validMoves;
@@ -346,18 +346,21 @@ class board {
             sqVal = getSquareVal(sq);
             if( sqVal == 0 )
                 continue;
+            // Kings get double value
             if( sqVal % 2 == player ) {
                 if( sqVal > 2 )
-                    res += 15;
+                    res += 20;
                 else
                     res += 10;
             }
             else {
                 if( sqVal > 2 )
-                    res -= 15;
+                    res -= 20;
                 else
                     res -= 10;
             }
+            // Backrow
+            //
         }
         return isMaxPlayer ? res : -1*res;
     }
@@ -548,6 +551,8 @@ class board {
 
     public boolean play(int turn, Scanner sc, boolean[] isAI, long timeLim ) {
         if( isAI[turn%2] ) {
+            if( isAI[(turn+1)%2] )
+                printBoard();
             if( aiMove( turn%2, timeLim ) )
                 return true;
             else {
