@@ -1,4 +1,6 @@
 import java.util.Scanner;
+import java.util.Random;
+import java.util.ArrayList;
 import java.util.Arrays;
 class board {
     
@@ -56,6 +58,7 @@ class board {
     private final static int moveLen = maxJumps+3;  // First 2 indices are startSq, endSq, last index is heuristic of move
     private int[][] validMoves;
     public int numValidMoves = 0;
+    public int prevNumValidMoves = 0;
     private boolean mustJump = false;
     //private int[] currMoveSqVals = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; 
 
@@ -65,8 +68,6 @@ class board {
     public static final String ANSI_RED_BACKGROUND = "\u001B[41m";
     public static final String ANSI_BLUE = "\u001B[34m";
 
-    public static final int[] worstMaxMove = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, negINF};
-    public static final int[] worstMinMove = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, posINF};
 
   
     // Zero parameter constructor creates a "new game" board
@@ -84,6 +85,7 @@ class board {
 
     public void printBoard() {
         int currVal;
+        System.out.println("                 PLAYER 1                \n");
         for( int row = 7; row >= 0; row-- ) {
             for( int reps = 0; reps < 3; reps++) {
                 if( reps == 1 )
@@ -115,7 +117,8 @@ class board {
                 }
             }
         }
-        System.out.println("     A    B    C    D    E    F    G    H");
+        System.out.println("     A    B    C    D    E    F    G    H\n");
+        System.out.println("                 PLAYER 2                ");
     }
     
     // Return 3 bit value at specified square
@@ -194,8 +197,45 @@ class board {
         return col.concat(row);
     }
 
+    public int str2ind( String sq ) {
+        int res;
+        char ch0 = sq.charAt(0);
+        int ch1 = Character.getNumericValue(sq.charAt(1));
+        if( ch1 < 1 || ch1 > 8)
+            return -1;
+        res = (ch1-1)*4;
+        if( (res/4)%2 == 0 ) {
+            if( ch0 == 'A' )
+                return res;
+            if( ch0 == 'C' )
+                return res+1;
+            if( ch0 == 'E' )
+                return res+2;
+            if( ch0 == 'G' )
+                return res+3;
+        }
+        else {
+            if( ch0 == 'B' )
+                return res;
+            if( ch0 == 'D' )
+                return res+1;
+            if( ch0 == 'F')
+                return res+2;
+            if( ch0 == 'H' )
+                return res+3;
+        }
+        return -1;
+    }
+
+    public int sqVals2MoveNum( int startSq, int endSq ) {
+        for( int ii = 0; ii < numValidMoves; ii++ )
+            if( validMoves[ii][0] == startSq && validMoves[ii][1] == endSq )
+                return ii+1;
+        return -1;
+    }
+
     public void printValidMoves(int player) {
-        System.out.print("Printing " + Integer.toString(numValidMoves) + " valid moves for player ");
+        System.out.print("There are " + Integer.toString(numValidMoves) + " valid moves for player ");
         if(player == 1)
             System.out.println("1");
         else
@@ -338,31 +378,83 @@ class board {
             boardState[move[ii]/8] += sqVals[ii] << (move[ii]&7)*3;
         }
     } 
-    
+
     public int heuristic(int player, boolean isMaxPlayer) {
-        int res, sqVal;
-        res = 0;
+        int res, sqVal, playerPieces, oppPieces;
+        res = playerPieces = oppPieces = 0;
+
         for( int sq = 0; sq < 32; sq++) {
             sqVal = getSquareVal(sq);
             if( sqVal == 0 )
                 continue;
-            // Kings get double value
             if( sqVal % 2 == player ) {
-                if( sqVal > 2 )
-                    res += 20;
+                playerPieces++;
+                if( sqVal > 2 )         // King
+                    res += 500;
                 else
-                    res += 10;
+                    res += 150;         // Pawn
+                if( player == 0 ) {
+                    if( sqVal < 3 )
+                        res += sq/4 * 8;
+                    if( sq < 4)  // Backrows
+                        res += 100;
+                }
+                else {
+                    if( sqVal < 3 )
+                        res += (7 - sq/4) * 8;
+                    if ( sq > 27 )
+                        res += 70;
+                }
+                /*for( int dir = 0; dir < 4; dir++ ) {
+                    sqVal = getSquareVal(getSquareDir(sq,dir));
+                    if( sqVal == -1 || sqVal % 2 == player )
+                        res += 30;
+                }*/
+                sqVal = getSquareVal(getSquareDir(sq, 3-2*player));
+                if( sqVal == -1 || sqVal % 2 == player )     // Checkers that are guarded
+                    res += 30;
+                sqVal = getSquareVal(getSquareDir(sq, 2-2*player));
+                if( sqVal == -1 || sqVal % 2 == player )     // Checkers that are guarded
+                    res += 30;
             }
             else {
+                oppPieces++;
                 if( sqVal > 2 )
-                    res -= 20;
+                    res -= 500;
                 else
-                    res -= 10;
+                    res -= 150;
+                 if( player == 0 ) {
+                    if( sqVal < 3 )
+                        res -= sq/4 * 8;
+                    if( sq < 4)  // Backrows
+                        res -= 70;
+                }
+                else {
+                    if( sqVal < 3 )
+                        res -= (7 - sq/4) * 8;
+                    if ( sq > 27 )
+                        res -= 100;
+                }
+                /*for( int dir = 0; dir < 4; dir++ ) {
+                    sqVal = getSquareVal(getSquareDir(sq,dir));
+                    if( sqVal == -1 || sqVal % 2 == player )
+                        res -= 30;
+                }*/
+                
+                sqVal = getSquareVal(getSquareDir(sq, 3-2*player));
+                if( sqVal == -1 || sqVal % 2 != player )     // Checkers that are guarded
+                    res -= 30;
+                sqVal = getSquareVal(getSquareDir(sq, 2-2*player));
+                if( sqVal == -1 || sqVal % 2 != player )     // Checkers that are guarded
+                    res -= 30;
+                
             }
-            // Backrow
-            //
         }
-        return isMaxPlayer ? res : -1*res;
+        if( playerPieces > oppPieces )
+            res += 50*(12-oppPieces);
+        else if( playerPieces < oppPieces )
+            res -= 50*(12-playerPieces);
+        return isMaxPlayer ? res : -res;
     }
 
     public boolean aiMove( int player, long time ) {    // Returns TRUE if move was performed, FALSE if AI has no moves.
@@ -389,25 +481,34 @@ class board {
         long timeLim = time-1000000;
         int[] bestMove = new int[moveLen];
         long t0 = System.nanoTime();
+        Random rand = new Random();
 
         while( true ) {
-            System.out.println("Depth is " + depth );
+            //System.out.println("Depth is " + depth );
             numValidMoves = 1;      // Bottom of Stack is reserved for best heuristic value
             validMoves[0][moveLen-1] = Integer.MIN_VALUE;
             alphaBeta( depth, Integer.MIN_VALUE, Integer.MAX_VALUE, player, true, 0, timeLim+t0);
             if( System.nanoTime() > timeLim+t0 )
                 break;
-            int move = 1;
-            while(true){
-            //for( int move = 1; move < numValidMoves; move++ ) {
-                if( validMoves[move][moveLen-1] == validMoves[0][moveLen-1] ) {
-                    for( int ii = 0; ii < moveLen; ii++ ) {
-                        bestMove[ii] = validMoves[move][ii];
-                    }
-                    break;
+            if( validMoves[0][moveLen-1] > 0 )
+                validMoves[0][moveLen-1]++;
+            else
+                validMoves[0][moveLen-1]--;
+            //while(true){
+            int bestMoveVal = Integer.MIN_VALUE;
+            ArrayList<Integer> bestMoveNumList = new ArrayList<Integer>();
+            for( int move = 1; move < prevNumValidMoves; move++ ) {
+                if( validMoves[move][moveLen-1] > bestMoveVal ) {
+                    bestMoveNumList.clear();
+                    bestMoveVal = validMoves[move][moveLen-1];
+                    bestMoveNumList.add(new Integer(move));
                 }
-                move++;
+                else if( validMoves[move][moveLen-1] == bestMoveVal )
+                    bestMoveNumList.add(new Integer(move));
             }
+            int bestMoveNum = (bestMoveNumList.get(rand.nextInt(bestMoveNumList.size()))).intValue();
+            for( int ii = 0; ii < moveLen; ii++ )
+                bestMove[ii] = validMoves[bestMoveNum][ii];
             depth++;
         }
         System.out.println("Got to depth " + Integer.toString(depth-1) + " and applying move:");
@@ -423,7 +524,7 @@ class board {
         int[] boardCopy = new int[4];
 
         if( System.nanoTime() > timeLim ) {
-            System.out.println("Time limit reached!");
+            //System.out.println("Time limit reached!");
             return;
         }
         if( depth == 0 ) {
@@ -495,8 +596,13 @@ class board {
                 }
             }
         }
+        prevNumValidMoves = numValidMoves;
         while( numValidMoves > firstValidMove )
             numValidMoves--;
+        if( v > posINF - 100 )
+            v--;
+        else if( v < negINF+100 )
+            v++;
         validMoves[appliedMoveNum][moveLen-1] = v;
         return;
     }
@@ -550,9 +656,8 @@ class board {
     }
 
     public boolean play(int turn, Scanner sc, boolean[] isAI, long timeLim ) {
+        printBoard();
         if( isAI[turn%2] ) {
-            if( isAI[(turn+1)%2] )
-                printBoard();
             if( aiMove( turn%2, timeLim ) )
                 return true;
             else {
@@ -561,8 +666,10 @@ class board {
             }
         }
         int inputMove = 0;
+        String playerMove;
+        String[] playerSquares;
+        int startPos, endPos;
         boolean firstTry = true;
-        printBoard();
         if(!updateValidMoves(turn%2)) {
             System.out.println("Player " + Integer.toString(turn%2) + " has no more moves. Player " + Integer.toString((turn+1)%2) + " WINS!");
             return false;
@@ -571,13 +678,19 @@ class board {
         while( inputMove<1 || inputMove>numValidMoves) {
             try{
                 if(firstTry) {
-                    System.out.println("Enter a move number from 1 - " + Integer.toString(numValidMoves));
+                    System.out.println("Enter a move in this format \"A1-B2\" (start-end) from the valid choices above.");
                     firstTry = false;
                 }
                 else {
-                    System.out.println("Invalid move. Enter a move number from 1 - " + Integer.toString(numValidMoves));
+                    System.out.println("Invalid move. Enter a move in the format \"A1-B2\" (start-end) from the valid choices above.");
                 }
-                inputMove = Integer.parseInt(sc.nextLine());
+                playerMove = sc.nextLine();
+                playerSquares = playerMove.split("-");
+                startPos = str2ind(playerSquares[0]);
+                endPos = str2ind(playerSquares[1]);
+                if( startPos == -1 || endPos == -1 )
+                    inputMove = 0;
+                inputMove = sqVals2MoveNum(startPos, endPos);
             }
             catch (Exception exp) {
                 inputMove = 0;
