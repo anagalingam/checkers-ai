@@ -398,12 +398,18 @@ class board {
                         res += sq/4 * 8;
                     if( sq < 4)  // Backrows
                         res += 100;
+                    res += (sq%4)*20;
+                    if( sq%4 == 0 )
+                        res -= 50;
                 }
                 else {
                     if( sqVal < 3 )
                         res += (7 - sq/4) * 8;
                     if ( sq > 27 )
-                        res += 70;
+                        res += 100;
+                    res += (3-sq%4)*20;
+                    if( sq%4 == 3 )
+                        res -= 50;
                 }
                 /*for( int dir = 0; dir < 4; dir++ ) {
                     sqVal = getSquareVal(getSquareDir(sq,dir));
@@ -427,20 +433,25 @@ class board {
                     if( sqVal < 3 )
                         res -= sq/4 * 8;
                     if( sq < 4)  // Backrows
-                        res -= 70;
+                        res -= 100;
+                    res -= (sq%4)*20;
+                    if( sq%4 == 0 )
+                        res += 50;
                 }
                 else {
                     if( sqVal < 3 )
                         res -= (7 - sq/4) * 8;
                     if ( sq > 27 )
                         res -= 100;
+                    res -= (3-sq%4)*20;
+                    if( sq % 4 == 3)
+                        res += 50;
                 }
                 /*for( int dir = 0; dir < 4; dir++ ) {
                     sqVal = getSquareVal(getSquareDir(sq,dir));
                     if( sqVal == -1 || sqVal % 2 == player )
                         res -= 30;
-                }*/
-                
+                }*/ 
                 sqVal = getSquareVal(getSquareDir(sq, 3-2*player));
                 if( sqVal == -1 || sqVal % 2 != player )     // Checkers that are guarded
                     res -= 30;
@@ -451,9 +462,9 @@ class board {
             }
         }
         if( playerPieces > oppPieces )
-            res += 50*(12-oppPieces);
+            res += 20*(12-oppPieces);
         else if( playerPieces < oppPieces )
-            res -= 50*(12-playerPieces);
+            res -= 20*(12-playerPieces);
         return isMaxPlayer ? res : -res;
     }
 
