@@ -610,8 +610,12 @@ class board {
             }
         }
         prevNumValidMoves = numValidMoves;
-        while( numValidMoves > firstValidMove )
+        while( numValidMoves > firstValidMove && firstValidMove != 1) {
             numValidMoves--;
+            for( int ii = 0; ii < moveLen; ii++ ) {
+                validMoves[numValidMoves][ii] = 0;
+            }
+        }
         if( v > posINF - 100 )
             v--;
         else if( v < negINF+100 )
@@ -659,11 +663,11 @@ class board {
         for( int dir = startDir; dir < stopDir; dir++ ) {
             tmpSq = getSquareDir(startSq,dir);
             if( !mustJump && getSquareVal(tmpSq) == 0 ) {
-                res = 1;
+                res += 1;
             }
             else if( getSquareVal(tmpSq) != 0 && (getSquareVal(tmpSq)%2) == (player == 0 ? 1 : 0) && getSquareVal(getSquareDir(tmpSq,dir^1)) == 0) {
                 mustJump = true;
-                res = 1;
+                res += 1;
             }
         }
         return res;
