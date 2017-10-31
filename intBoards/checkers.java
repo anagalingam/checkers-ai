@@ -76,35 +76,35 @@ class checkers {
                 }
             }
         }
-        else
+        else {
             game = new board();
-        if( gameType.equals("1") || gameType.equals("2")) {
-            System.out.println("Enter a time limit for the AI in seconds: ");
-            time = sc.nextLine();
-            while(timeLim == 0) {
-                try{
-                    timeLim = Long.parseLong(time)*SEC2NANO;
-                }
-                catch(Exception exp) {
-                    System.out.println("Invalid time! Please enter a time in seconds: ");
-                    timeLim = 0;
-                    time = sc.nextLine();
-                }
-                if( timeLim < 0 ) {
-                System.out.println("Invalid time! Please enter a time in seconds: ");
-                timeLim = 0;
+            if( gameType.equals("1") || gameType.equals("2")) {
+                System.out.println("Enter a time limit for the AI in seconds: ");
                 time = sc.nextLine();
+                while(timeLim == 0) {
+                    try{
+                        timeLim = Long.parseLong(time)*SEC2NANO;
+                    }
+                    catch(Exception exp) {
+                        System.out.println("Invalid time! Please enter a time in seconds: ");
+                        timeLim = 0;
+                        time = sc.nextLine();
+                    }
+                    if( timeLim < 0 ) {
+                        System.out.println("Invalid time! Please enter a time in seconds: ");
+                        timeLim = 0;
+                        time = sc.nextLine();
+                    }
                 }
             }
-        }
-        System.out.println("Which player should go first? (1 or 2)");
-        firstPlayer = sc.nextLine();
-        while(!(firstPlayer.equals("1") || firstPlayer.equals("2"))) {
-            System.out.println("Invalid input! Please input '1' or '2'");
+            System.out.println("Which player should go first? (1 or 2)");
             firstPlayer = sc.nextLine();
+            while(!(firstPlayer.equals("1") || firstPlayer.equals("2"))) {
+                System.out.println("Invalid input! Please input '1' or '2'");
+                firstPlayer = sc.nextLine();
+            }
+            turn = Integer.parseInt(firstPlayer)%2;
         }
-        turn = Integer.parseInt(firstPlayer)%2;
-        
         while(game.play(turn,sc,isAI, timeLim))
             turn++;
     }
