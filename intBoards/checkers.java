@@ -66,10 +66,12 @@ class checkers {
                                 startBoard[(7-row)/2] += Integer.parseInt(tokens[col])<< (((7-row)%2)*4+col)*3;
                         }
                     }
-                    if( (turn == 0 || turn == 1 ) && timeLim > 0 )
+                    if( (turn == 1 || turn == 2 ) && timeLim > 0 )
                         game = new board(startBoard);
                 }
                 catch(Exception exp) {
+                }
+                if( game == null ) {
                     System.out.println("Invalid board file!");
                     System.out.print("Please input the name of the board file: ");
                     boardFileName = sc.nextLine();

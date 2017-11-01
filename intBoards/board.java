@@ -441,7 +441,7 @@ class board {
                     if( sq > 27 )  // Backrows
                         res -= 100;
                     res -= (sq%4)*20;
-                    if( sq%4 == 0 )
+                    if( sq%4 == 3 )
                         res += 50;
                 }
                 else {
@@ -450,7 +450,7 @@ class board {
                     if ( sq < 4 )
                         res -= 100;
                     res -= (3-sq%4)*20;
-                    if( sq % 4 == 3)
+                    if( sq % 4 == 0)
                         res += 50;
                 }
                 /*for( int dir = 0; dir < 4; dir++ ) {
@@ -491,16 +491,6 @@ class board {
         if( anyMove == 0 ) {    // If no moves, AI loses.
             return false;
         }
-        else if( anyMove == 1 ) {
-            for( int sq = 0; sq < 32; sq++ ) {
-                sqVal = getSquareVal(sq);
-                if( sqVal > 0 && (sqVal&1) == player )
-                    recursiveMoveFinder( sq, sq, 0, player, (sqVal > 2 ? true : false));
-            }
-            applySingleMove(player, 0);
-            System.out.println("\nAI makes the forced move.\n");
-            return true;
-        }
 
         int depth = 1;
         long timeLim = time-1000000;
@@ -509,12 +499,17 @@ class board {
         Random rand = new Random();
 
         while( true ) {
-            System.out.println("\n Depth is " + depth );
+            // System.out.println("\n Depth is " + depth );
             numValidMoves = 1;      // Bottom of Stack is reserved for best heuristic value
             validMoves[0][moveLen-1] = Integer.MIN_VALUE;
             alphaBeta( depth, Integer.MIN_VALUE, Integer.MAX_VALUE, player, true, 0, timeLim+t0);
             if( System.nanoTime() > timeLim+t0 )
                 break;
+            else if( prevNumValidMoves == 2 ) {
+                applySingleMove(player, 1);
+                System.out.println("\nAI makes the forced move.\n");
+                return true;
+            }
             //while(true){
             int bestMoveVal = Integer.MIN_VALUE;
             ArrayList<Integer> bestMoveNumList = new ArrayList<Integer>();
@@ -537,8 +532,8 @@ class board {
             }
             depth++;
         }
-        System.out.println("Got to depth " + Integer.toString(depth-1) + " and applying move:");
-        printArray(bestMove);
+        System.out.println("Got to depth " + Integer.toString(depth-1) + " in " + Double.toString( (System.nanoTime() - t0) / ((double)checkers.SEC2NANO)) + " seconds.");
+        System.out.println("Applying move: " + Arrays.toString(bestMove));
         applySingleMove(player, bestMove);
         return true;
     }
@@ -689,7 +684,7 @@ class board {
         int startPos, endPos;
         boolean firstTry = true;
         if(!updateValidMoves(turn%2)) {
-            System.out.println("Player " + Integer.toString(-(turn%2-2)) + " has no more moves. Player " + Integer.toString(-((turn+1)%2-2)) + " WINS!");
+            System.out.println("Player " + Integer.toString(-1*(turn%2-2)) + " has no more moves. Player " + Integer.toString(-1*((turn+1)%2-2)) + " WINS!");
             return false;
         }
         printValidMoves(turn%2);
