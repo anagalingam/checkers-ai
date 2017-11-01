@@ -58,8 +58,8 @@ class board {
     private final static int maxJumps = 9;          // Looked up online
     private final static int moveLen = maxJumps+3;  // First 2 indices are startSq, endSq, last index is heuristic of move
     private int[][] validMoves;
-    public int numValidMoves = 0;
-    public int prevNumValidMoves = 0;
+    private int numValidMoves = 0;
+    private int prevNumValidMoves = 0;
     private boolean mustJump = false;
 
     public static final int posINF = 2000000000;
@@ -507,7 +507,7 @@ class board {
                 break;
             else if( prevNumValidMoves == 2 ) {
                 applySingleMove(player, 1);
-                System.out.println("\nAI makes the forced move.\n");
+                System.out.println("\nAI makes the forced move: " + Arrays.toString(validMoves[1]) + "\n");
                 return true;
             }
             //while(true){
@@ -526,10 +526,10 @@ class board {
             for( int ii = 0; ii < moveLen; ii++ )
                 bestMove[ii] = validMoves[bestMoveNum][ii];
             if( depth == DEPTH_LIM && DEBUG) {
-                //for( int ii = 0; ii < 100; ii++ )
-                  //  System.out.println("Stack level " + ii + " Value: " + Arrays.toString(validMoves[ii]));
                 break;
             }
+            if( bestMoveVal > posINF-100 )
+                break;
             depth++;
         }
         System.out.println("Got to depth " + Integer.toString(depth-1) + " in " + Double.toString( (System.nanoTime() - t0) / ((double)checkers.SEC2NANO)) + " seconds.");
@@ -674,7 +674,7 @@ class board {
             if( aiMove( turn%2, timeLim ) )
                 return true;
             else {
-                System.out.println("Player " + Integer.toString(-(turn%2-2)) + " has no more moves. Player " + Integer.toString(-((turn+1)%2)) + " WINS!");
+                System.out.println("Player " + Integer.toString(-1*(turn%2-2)) + " has no more moves. Player " + Integer.toString(-1*((turn+1)%2-2)) + " WINS!");
                 return false;
             }
         }
