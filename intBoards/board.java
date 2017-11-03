@@ -298,6 +298,7 @@ class board {
                     else
                         for( int ii = 0; ii < 2+numJumpsSoFar; ii++ )
                             validMoves[numValidMoves][ii] = validMoves[numValidMoves-1][ii];
+                    validMoves[numValidMoves][1] = getSquareDir(tmpSq,dir^1);
                     validMoves[numValidMoves][2+numJumpsSoFar] = tmpSq;
                 }
                 else {
@@ -543,7 +544,7 @@ class board {
             if( depth == DEPTH_LIM && DEBUG) {
                 break;
             }
-            if( bestMoveVal > posINF-100 )
+            if( bestMoveVal > posINF-100 || bestMoveVal < negINF+100 )
                 break;
             depth++;
         }
