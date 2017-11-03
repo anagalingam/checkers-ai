@@ -292,13 +292,21 @@ class board {
                 }
             }
             else if( getSquareVal(tmpSq) != 0 && (getSquareVal(tmpSq)%2) == (player == 0 ? 1 : 0) && getSquareVal(getSquareDir(tmpSq,dir^1)) == 0) {
-                validMoves[numValidMoves][0] = startSq;
-                validMoves[numValidMoves][1] = getSquareDir(tmpSq,dir^1);
-                for(int ii = 0; ii < numJumpsSoFar; ii++)
-                    validMoves[numValidMoves][2+ii] = validMoves[numValidMoves-1][2+ii];
-                validMoves[numValidMoves][2+numJumpsSoFar] = tmpSq;
+                if( numJumpsSoFar > 0 ) {
+                    if( validMoves[numValidMoves-1][2+numJumpsSoFar] == 0 )
+                        numValidMoves--;
+                    else
+                        for( int ii = 0; ii < 2+numJumpsSoFar; ii++ )
+                            validMoves[numValidMoves][ii] = validMoves[numValidMoves-1][ii];
+                    validMoves[numValidMoves][2+numJumpsSoFar] = tmpSq;
+                }
+                else {
+                    validMoves[numValidMoves][0] = startSq;
+                    validMoves[numValidMoves][1] = getSquareDir(tmpSq,dir^1);
+                    validMoves[numValidMoves][2] = tmpSq;
+                }
                 // Below ensures non-lazy deletion in move Stack
-                for( int ii = 3+numJumpsSoFar; ii < moveLen; ii++)
+                for( int ii = 3+numJumpsSoFar; ii < moveLen-1; ii++)
                     validMoves[numValidMoves][ii] = 0;
                 validMoves[numValidMoves][moveLen-1] = Integer.MIN_VALUE;
                 numValidMoves++;
@@ -380,26 +388,42 @@ class board {
     } 
 
     public int heuristic(int player, boolean isMaxPlayer) {
-        int res, sqVal, playerPieces, oppPieces;
-        res = playerPieces = oppPieces = 0;
+        int res, sqVal, playerPieces, oppPieces, playerKings, oppKings;
+        res = playerPieces = oppPieces = playerKings = oppKings = 0;
         for( int sq = 0; sq < 32; sq++) {
             sqVal = getSquareVal(sq);
             if( sqVal == 0 )
                 continue;
-            if( sqVal%2 == player )
+            if( sqVal%2 == player ) {
                 playerPieces++;
-            else
+                if( sqVal > 2 ) {
+                    res += 500;
+                    playerKings++;
+                }
+                else
+                    res += 150;
+            }
+            else {
                 oppPieces++;
+                if( sqVal > 2 ) {
+                    res -= 500;
+                    oppKings++;
+                }
+                else
+                    res -= 150;
+            }
         }
+
+        if( playerPieces > oppPieces )
+            res += 10*(12-oppPieces);
+        else if( playerPieces < oppPieces )
+            res -= 10*(12-playerPieces);
+
         for( int sq = 0; sq < 32; sq++) {
             sqVal = getSquareVal(sq);
             if( sqVal == 0 )
                 continue;
             if( sqVal % 2 == player ) {
-                if( sqVal > 2 )         // King
-                    res += 500;
-                else
-                    res += 150;         // Pawn
                 if( player == 0 ) {
                     if( sqVal < 3 )
                         res += sq/4 * 8;
@@ -431,10 +455,6 @@ class board {
                     res += 30;
             }
             else {
-                if( sqVal > 2 )
-                    res -= 500;
-                else
-                    res -= 150;
                  if( player == 0 ) {
                     if( sqVal < 3 )
                         res -= sq/4 * 8;
@@ -467,10 +487,6 @@ class board {
                 
             }
         }
-        if( playerPieces > oppPieces )
-            res += 10*(12-oppPieces);
-        else if( playerPieces < oppPieces )
-            res -= 10*(12-playerPieces);
         return isMaxPlayer ? res : -res;
     }
 
@@ -498,8 +514,7 @@ class board {
         long t0 = System.nanoTime();
         Random rand = new Random();
 
-        while( true ) {
-            // System.out.println("\n Depth is " + depth );
+        while( depth < 30 ) {
             numValidMoves = 1;      // Bottom of Stack is reserved for best heuristic value
             validMoves[0][moveLen-1] = Integer.MIN_VALUE;
             alphaBeta( depth, Integer.MIN_VALUE, Integer.MAX_VALUE, player, true, 0, timeLim+t0);
