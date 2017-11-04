@@ -395,6 +395,22 @@ class board {
             sqVals4revert[depth][ii] = 0;
     }
 
+    public int distToClosestOppPiece( int opponent , int playerSq ) {
+        int dist = 15;    // Largest manahattan distance is 14 corner to corner
+        int sqVal, thisDist;
+        for( int row = 0; row < 8; row ++ ) {
+            for( int col = 0; col < 4; col++ ) {
+                sqVal = getSquareVal(row*4+col);
+                if( sqVal != 0 && sqVal%2 == opponent ) {
+                    thisDist = 2*(playerSq%4 - col) + playerSq/4 - row;
+                    thisDist = thisDist < 0 ? -thisDist : thisDist;
+                    dist = thisDist < dist ? thisDist : dist;
+                }
+            }
+        }
+        return dist;
+    }
+
     public int heuristic(int player, boolean isMaxPlayer) {
         int res, sqVal, playerPieces, oppPieces, playerKings, oppKings;
         res = playerPieces = oppPieces = playerKings = oppKings = 0;
@@ -421,78 +437,95 @@ class board {
                     res -= 150;
             }
         }
-
+        
         if( playerPieces > oppPieces )
             res += 10*(12-oppPieces);
         else if( playerPieces < oppPieces )
             res -= 10*(12-playerPieces);
 
-        for( int sq = 0; sq < 32; sq++) {
-            sqVal = getSquareVal(sq);
-            if( sqVal == 0 )
-                continue;
-            if( sqVal % 2 == player ) {
-                if( player == 0 ) {
-                    if( sqVal < 3 )
-                        res += sq/4 * 8;
-                    if( sq < 4)  // Backrows
-                        res += 100;
-                    res += (sq%4)*20;
-                    if( sq%4 == 0 )
-                        res -= 50;
+
+        if( playerKings + oppKings >= 3 ) { // End game
+            for( int sq = 0; sq < 32; sq++ ) {
+                sqVal = getSquareVal(sq);
+                if( sqVal == 0 )
+                    continue;
+                if( playerPieces > oppPieces ) {
+                    if( sqVal % 2 == player )
+                        res -= 5*distToClosestOppPiece( (player+1)&2 , sq );
+                    else if( sq == 3 || sq == 7 || sq == 28 || sq == 24 )   // Opponent Piece has double corner
+                        res -= 30;
                 }
-                else {
-                    if( sqVal < 3 )
-                        res += (7 - sq/4) * 8;
-                    if ( sq > 27 )
-                        res += 100;
-                    res += (3-sq%4)*20;
-                    if( sq%4 == 3 )
-                        res -= 50;
+                else if( oppPieces > playerPieces ) {
+                    if( sqVal % 2 != player )
+                        res += 5*distToClosestOppPiece( player , sq );
+                    else if( sq == 3 || sq == 7 || sq == 28 || sq == 24 )   // Opponent Piece has double corner
+                        res += 30;
                 }
+            }
+        }
+        else {
+            for( int sq = 0; sq < 32; sq++) {
+                sqVal = getSquareVal(sq);
+                if( sqVal == 0 )
+                    continue;
+                if( sqVal % 2 == player ) {
+                    if( player == 0 ) {
+                        if( sqVal < 3 )
+                            res += sq/4 * 8;
+                        if( sq < 4)  // Backrows
+                            res += 100;
+                        res += (sq%4)*20;
+                        if( sq%4 == 0 )
+                            res -= 50;
+                    }
+                    else {
+                        if( sqVal < 3 )
+                            res += (7 - sq/4) * 8;
+                        if ( sq > 27 )
+                            res += 100;
+                        res += (3-sq%4)*20;
+                        if( sq%4 == 3 )
+                            res -= 50;
+                    }
                 /*for( int dir = 0; dir < 4; dir++ ) {
                     sqVal = getSquareVal(getSquareDir(sq,dir));
                     if( sqVal == -1 || sqVal % 2 == player )
                         res += 30;
                 }*/
-                sqVal = getSquareVal(getSquareDir(sq, 3-2*player));
-                if( sqVal == -1 || sqVal % 2 == player )     // Checkers that are guarded
-                    res += 30;
-                sqVal = getSquareVal(getSquareDir(sq, 2-2*player));
-                if( sqVal == -1 || sqVal % 2 == player )     // Checkers that are guarded
-                    res += 30;
-            }
-            else {
-                 if( player == 0 ) {
-                    if( sqVal < 3 )
-                        res -= sq/4 * 8;
-                    if( sq > 27 )  // Backrows
-                        res -= 100;
-                    res -= (sq%4)*20;
-                    if( sq%4 == 3 )
-                        res += 50;
+                    sqVal = getSquareVal(getSquareDir(sq, 3-2*player));
+                    if( sqVal == -1 || sqVal % 2 == player )     // Checkers that are guarded
+                        res += 30;
+                    sqVal = getSquareVal(getSquareDir(sq, 2-2*player));
+                    if( sqVal == -1 || sqVal % 2 == player )     // Checkers that are guarded
+                        res += 30;
                 }
                 else {
-                    if( sqVal < 3 )
-                        res -= (7 - sq/4) * 8;
-                    if ( sq < 4 )
-                        res -= 100;
-                    res -= (3-sq%4)*20;
-                    if( sq % 4 == 0)
-                        res += 50;
-                }
-                /*for( int dir = 0; dir < 4; dir++ ) {
-                    sqVal = getSquareVal(getSquareDir(sq,dir));
-                    if( sqVal == -1 || sqVal % 2 == player )
+                    if( player == 0 ) {
+                        if( sqVal < 3 )
+                            res -= sq/4 * 8;
+                        if( sq > 27 )  // Backrows
+                            res -= 100;
+                        res -= (sq%4)*20;
+                        if( sq%4 == 3 )
+                            res += 50;
+                    }
+                    else {
+                        if( sqVal < 3 )
+                            res -= (7 - sq/4) * 8;
+                        if ( sq < 4 )
+                            res -= 100;
+                        res -= (3-sq%4)*20;
+                        if( sq % 4 == 0)
+                            res += 50;
+                    }
+                    sqVal = getSquareVal(getSquareDir(sq, 3-2*player));
+                    if( sqVal == -1 || sqVal % 2 != player )     // Checkers that are guarded
                         res -= 30;
-                }*/ 
-                sqVal = getSquareVal(getSquareDir(sq, 3-2*player));
-                if( sqVal == -1 || sqVal % 2 != player )     // Checkers that are guarded
-                    res -= 30;
-                sqVal = getSquareVal(getSquareDir(sq, 2-2*player));
-                if( sqVal == -1 || sqVal % 2 != player )     // Checkers that are guarded
-                    res -= 30;
+                    sqVal = getSquareVal(getSquareDir(sq, 2-2*player));
+                    if( sqVal == -1 || sqVal % 2 != player )     // Checkers that are guarded
+                        res -= 30;
                 
+                }
             }
         }
         return isMaxPlayer ? res : -res;
