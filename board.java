@@ -501,15 +501,15 @@ class board {
                     continue;
                 if( playerPieces > oppPieces ) {
                     if( sqVal % 2 == player )
-                        res -= 5*distToClosestOppPiece( (player+1)&2 , sq );
+                        res -= 2*distToClosestOppPiece( (player+1)&2 , sq );
                     else if( sq == 3 || sq == 7 || sq == 28 || sq == 24 )   // Opponent Piece has double corner
-                        res -= 30;
+                        res -= 100;
                 }
                 else if( oppPieces > playerPieces ) {
                     if( sqVal % 2 != player )
-                        res += 5*distToClosestOppPiece( player , sq );
+                        res += 2*distToClosestOppPiece( player , sq );
                     else if( sq == 3 || sq == 7 || sq == 28 || sq == 24 )   // Opponent Piece has double corner
-                        res += 30;
+                        res += 100;
                 }
             }
         }
