@@ -99,6 +99,8 @@ class checkers {
                     }
                 }
             }
+            if( gameType.equals("1") ) 
+                System.out.println("NOTE: In AI vs. Player, AI is always player 1 and Player is always player 2.");
             System.out.println("Which player should go first? (1 or 2)");
             firstPlayer = sc.nextLine();
             while(!(firstPlayer.equals("1") || firstPlayer.equals("2"))) {

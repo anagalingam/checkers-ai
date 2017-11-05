@@ -402,8 +402,7 @@ class board {
             for( int col = 0; col < 4; col++ ) {
                 sqVal = getSquareVal(row*4+col);
                 if( sqVal != 0 && sqVal%2 == opponent ) {
-                    thisDist = 2*(playerSq%4 - col) + playerSq/4 - row;
-                    thisDist = thisDist < 0 ? -thisDist : thisDist;
+                    thisDist = Math.abs(2*(playerSq%4 - col)) + Math.abs(playerSq/4 - row);
                     dist = thisDist < dist ? thisDist : dist;
                 }
             }
