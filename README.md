@@ -16,7 +16,7 @@ Quick Start Guide
 
 - If playing with an AI, the user is prompted for a move time limit in seconds for the AI. Starting player can also be set.
 
-- On each user turn, a list of all valid moves is output. The user must choose from this list using the format "A1-B2".
+- On each user turn, a list of all valid moves is output. The user must choose from this list using the format `A1-B2`.
 
 Code Explanation
 ----------------
