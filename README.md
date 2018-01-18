@@ -1,7 +1,7 @@
 Checkers AI
 ===========
 
-A detailed explanation of the project can be found in the `project_report.pdf`
+This project implements a console based game of checkers with the option to play against an AI agent. A detailed explanation of the project can be found in the `project_report.pdf`
 
 Quick Start Guide
 -----------------
